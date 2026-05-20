@@ -1,0 +1,11 @@
+{
+  "name": "plan-manager",
+  "description": "6-module project orchestration system for Claude Code. Project-centric, task-based execution with cross-project parallel coordination. Modules: Project, Task, Plan, Execute, Check, Assistant.",
+  "author": {
+    "name": "wangyuncepu",
+    "url": "https://github.com/wangyuncepu"
+  },
+  "version": "3.0.0",
+  "license": "MIT",
+  "keywords": ["project-management", "task-tracking", "planning", "execution", "productivity"]
+}

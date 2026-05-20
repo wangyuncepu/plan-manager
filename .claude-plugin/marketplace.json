@@ -1,0 +1,25 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "plan-manager",
+  "description": "6-module project orchestration: Project management, Task tracking, Plan discipline, Parallel execution, Health monitoring, and AI assistant. Project-centric with one active task per project, cross-project parallel execution.",
+  "owner": {
+    "name": "wangyuncepu",
+    "url": "https://github.com/wangyuncepu"
+  },
+  "metadata": {
+    "description": "Project orchestration with task management, plan discipline, and parallel execution",
+    "version": "3.0.0"
+  },
+  "plugins": [
+    {
+      "name": "plan-manager",
+      "description": "6-module project orchestration system with task management, mandatory planning, parallel execution, loop detection, and AI assistant",
+      "source": "./",
+      "strict": false,
+      "category": "productivity",
+      "skills": [
+        "./skills/plan-manager"
+      ]
+    }
+  ]
+}
