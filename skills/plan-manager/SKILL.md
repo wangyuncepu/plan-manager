@@ -1,15 +1,17 @@
 ---
 name: plan-manager
-version: 3.0.0
+version: 4.0.0
 description: |
-  6-module project orchestration system. Project-centric, task-based execution
-  with cross-project parallel coordination.
+  Autonomous multi-project orchestration system. User sets goals and reviews
+  plans; AI handles drafting, execution, and routine decisions. Intervenes
+  only on major problems (loops, deadlocks, unreachable success criteria).
+  Concurrent editing of non-running projects is always safe.
   1. Project — project registry and lifecycle
-  2. Task — task management with priority/dependency ordering, one active per project
-  3. Plan — mandatory planning before execution, plan-task binding
-  4. Execute — launch top-ranked tasks across N projects in parallel
-  5. Check — infinite-loop detection, auto-checkpoint, debug state
-  6. Assistant — interactive AI guide for project review and iteration
+  2. Task — priority/dependency ordering, one active per project
+  3. Plan — AI drafts plans from goals, user reviews and approves
+  4. Execute — auto-start, auto-continue, zero-interaction execution
+  5. Check — auto-checkpoint, loop detection, major/minor problem classification
+  6. Assistant — dashboard, plan quality review, goal-setting guide
 triggers:
   - manage plans
   - plan manager
@@ -25,6 +27,7 @@ triggers:
   - complete task
   - make plan
   - create plan for
+  - plan for
   - execute tasks
   - run tasks
   - start execution
@@ -35,6 +38,10 @@ triggers:
   - what should I do
   - what's next
   - project overview
+  - continue
+  - resume
+  - auto
+  - auto mode
 allowed-tools:
   - Read
   - Write
@@ -45,41 +52,79 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# /plan-manager — 6-Module Project Orchestration System
+# /plan-manager — Autonomous Multi-Project Orchestration
+
+## User Role & Autonomy Model
+
+**User does:**
+- Set project goals and priorities
+- Review and approve AI-drafted plans
+- Intervene on MAJOR problems (loops, deadlocks, unreachable goals)
+- Edit non-running projects anytime; edit non-active tasks in running projects
+
+**AI does (autonomously, no user prompts):**
+- Draft plans from task descriptions
+- Execute tasks step by step, invoke other skills as needed
+- Auto-checkpoint before major actions
+- Auto-continue: when one task completes, pick next ready task
+- Handle minor problems internally (retry, course-correct, re-plan approach)
+
+## Concurrent Editing Safety
+
+| Scope | Safe to edit? |
+|-------|---------------|
+| Non-running project (any file) | ✅ Yes — fully safe |
+| Running project, non-active task (plan, description) | ✅ Yes — task isn't executing |
+| Running project, active task plan.md | ⚠️ Read OK. Edit only to add notes, not restructure |
+| Running project, active task .task file | 🔴 No — AI is updating status fields |
+| Running project, .project metadata | ⚠️ Read OK. Don't change status/priority mid-execution |
+
+User can freely create new tasks, edit plans of pending tasks, reorder priorities — even while other projects are executing.
+
+---
 
 ## Architecture
 
 ```
 <root>/
-├── project/                       ← all projects
-│   └── <project-name>/
-│       ├── .project               ← project metadata (YAML)
-│       ├── README.md              ← project description
-│       ├── tasks/                 ← project tasks
-│       │   └── <task-slug>/
-│       │       ├── .task          ← task metadata (YAML)
-│       │       ├── plan.md        ← REQUIRED: execution plan
-│       │       └── ...            ← task artifacts
-│       └── ...
-├── STATE.json                     ← global execution state + checkpoints
-├── DOCMAP.md                      ← document index (auto-generated)
+├── project/<proj>/
+│   ├── .project               ← project metadata (YAML)
+│   ├── README.md              ← project description
+│   └── tasks/<task-slug>/
+│       ├── .task              ← task metadata (YAML)
+│       ├── plan.md            ← REQUIRED: user-reviewed execution plan
+│       └── checkpoints/       ← auto-saved state snapshots
+├── STATE.json                 ← global execution state
+├── DOCMAP.md                  ← document index (auto-generated)
 └── .plan-manager/
 ```
 
-**Config:** `~/.claude/plan-manager/config.json` → `{"root": "/path/to/root"}`
+**Config:** `~/.claude/plan-manager/config.json`
+```json
+{
+  "root": "/path/to/root",
+  "parallelism": 2,
+  "autonomy": "full"
+}
+```
+
+| Config key | Default | Meaning |
+|------------|---------|---------|
+| `root` | (required) | Management root path |
+| `parallelism` | 2 | Default N for "execute N projects" |
+| `autonomy` | `full` | `full`=never ask during execution; `plan-review`=ask before plan changes; `supervised`=ask before each task |
 
 **Core rules:**
-- One project = one folder under `<root>/project/`
-- One task can be `in_progress` per project at a time
-- Every task MUST have a `plan.md` before it can be executed
-- Tasks within a project are sorted by priority then dependency order
-- User controls N = how many projects run simultaneously
+- One task `in_progress` per project at a time
+- Every task MUST have a `plan.md` with `Status: approved` before execution → otherwise status stays `planned`, not `ready`
+- AI drafts plans; user reviews goals and success criteria
+- AI auto-continues: complete → pick next → execute, without asking
 
 **Task lifecycle:**
 ```
 pending → planned → ready → in_progress → completed
-  ↓         ↓                  ↓
-cancelled  blocked          blocked
+  ↓         ↓         ↓         ↓
+cancelled  (no plan) blocked  blocked
 ```
 
 ---
@@ -88,440 +133,353 @@ cancelled  blocked          blocked
 
 ### On every invocation
 
-1. Check `~/.claude/plan-manager/config.json` → read `$ROOT`
-2. If missing: **MUST configure first** (see below). Do not proceed.
+1. Read `~/.claude/plan-manager/config.json` → `$ROOT`, `$N` (parallelism), `$AUTONOMY`
+2. If missing: configure.
 
 ### Configure ("configure plan manager", "setup plan manager")
 
-Ask user for management root path → create structure:
+Ask user for root path. Create structure. Write config with defaults.
 ```bash
 mkdir -p "$ROOT/project"
-echo '{"root":"'"$ROOT"'"}' > ~/.claude/plan-manager/config.json
+cat > ~/.claude/plan-manager/config.json << EOF
+{"root":"$ROOT","parallelism":2,"autonomy":"full"}
+EOF
 ```
+
+### Change settings ("set parallelism to N", "autonomy full/supervised")
+
+Update individual config keys. Report new value.
 
 ---
 
-## Module 1: PROJECT — 项目管理
+## Module 1: PROJECT
 
-Project = folder under `<root>/project/`. The fundamental unit of work organization.
-
-### .project file format (YAML in markdown frontmatter style)
-
+### .project format
 ```yaml
-name: string          # display name
-slug: string          # folder name
+name: string
+slug: string
 status: active | idle | completed | archived
 priority: P0 | P1 | P2 | P3
 created: YYYY-MM-DD
+goal: string          # one-sentence project goal (user sets this)
 description: string
 notes: string
 ```
 
-### List projects ("list projects", "project status", "project overview")
+### List projects ("list projects", "project overview")
 
-```bash
-for d in "$ROOT/project/"*/; do
-  name=$(basename "$d")
-  status=$(grep '^status:' "$d/.project" 2>/dev/null | cut -d: -f2 | xargs || echo "active")
-  active=$(grep -c 'status: in_progress' "$d/tasks/"*/.task 2>/dev/null || echo "0")
-  total=$(ls -1 "$d/tasks/" 2>/dev/null | wc -l || echo "0")
-  echo "| $name | $status | $active/$total |"
-done
+Show table:
 ```
-
-Display:
-```
-| Project | Status | Tasks (active/total) | Priority |
-|---------|--------|---------------------|----------|
-| PlanSkill | active | 0/3 | P0 |
-| ExophMetry | idle | 0/2 | P1 |
-| CDMSystem | completed | 0/5 | P2 |
+| Project | Status | Goal | Tasks (active/total) | Priority |
+|---------|--------|------|---------------------|----------|
+| PlanSkill | active | Build plan-manager skill | 1/3 | P0 |
+| ExophMetry | idle | Research exophthalmometry | 0/2 | P1 |
 ```
 
 ### Create project ("create project <name>")
 
-1. Get project name, slugify (lowercase, hyphens)
-2. Create:
-```bash
-mkdir -p "$ROOT/project/<slug>/tasks"
-cat > "$ROOT/project/<slug>/.project" << 'EOF'
-name: <display-name>
-slug: <slug>
-status: active
-priority: P2
-created: YYYY-MM-DD
-description: |
-  <user-provided description>
-notes: ""
-EOF
-```
-3. Report: "Project `<name>` created at `$ROOT/project/<slug>/`"
+1. Slugify name. Create folder structure.
+2. **Ask user for the project goal** (one sentence). This is the user's only mandatory input.
+3. Write `.project` with goal field.
+4. Report created.
 
 ### Show project ("show project <name>")
 
-1. Read `.project` metadata
-2. List tasks with status
-3. Show active task, pending count, completed count
+Read `.project`, list tasks with status, show active task details.
 
 ---
 
-## Module 2: TASK — 任务管理
+## Module 2: TASK
 
-Task = subfolder under `<project>/tasks/`. Basic unit of execution.
-
-### .task file format
-
+### .task format
 ```yaml
-id: TASK-XXX          # auto: PROJ-SLUG-001, PROJ-SLUG-002 ...
-slug: string          # folder name (task brief slug)
-title: string         # short actionable title
-project: string       # parent project slug
+id: PRJ-001
+slug: string
+title: string
+project: string
 status: pending | planned | ready | in_progress | completed | cancelled | blocked
 priority: P0 | P1 | P2 | P3
-order: number         # execution order within project (lower = first)
+order: number
 created: YYYY-MM-DD
-deadline: YYYY-MM-DD  # optional
+deadline: YYYY-MM-DD
 completed: YYYY-MM-DD
-depends_on: []        # list of task IDs (same project) this depends on
-depends_on_cross: []  # list of task IDs (other projects) this depends on
-description: string
+depends_on: []
+depends_on_cross: []
+description: string        # AI can expand this into plan
 notes: string
-plan_file: string     # path to plan.md, set when plan created
+plan_file: string
 ```
 
 ### Task ordering (per project)
-
-Tasks sorted by:
-1. `depends_on` — blocked tasks go after their dependencies
-2. `priority` — P0 before P1 before P2 before P3
-3. `order` — explicit ordering number
-
-The **top task** = first task in sorted list with status `ready` (or `planned` if user allows).
+1. Dependency chain (blocked after deps)
+2. Priority (P0 → P3)
+3. `order` field
 
 ### List tasks ("list tasks", "task status")
+Per-project table with status, plan existence (✓/✗), priority.
 
-Show per-project task tables:
-```
-## PlanSkill Tasks
-| # | ID | Title | Status | Plan | Priority |
-|---|----|-------|--------|------|----------|
-| 1 | PS-001 | Build 6 modules | in_progress | ✓ | P0 |
-| 2 | PS-002 | Write tests | pending | ✗ | P1 |
-| 3 | PS-003 | Add docs | pending | ✗ | P2 |
+### Create task ("add task to <project>", "new task")
 
-→ Next to execute: PS-002 (when PS-001 completes)
-→ Blocked: none
-```
+1. If project not specified, list projects.
+2. Ask: title, priority, description.
+3. Auto-assign ID, slug, order.
+4. Create `.task` with `status: pending`, `plan_file: ""`.
+5. Report: "Task `<ID>` created. Next: 'make plan for <ID>' to auto-draft a plan."
 
-### Create task ("add task to <project>", "create task in <project>", "new task")
+### Update task ("start/cancel/block <ID>")
 
-1. List projects if not specified, ask which one.
-2. **One-task check:** Warn if project already has an `in_progress` task.
-3. Ask: title, priority, description, deadline.
-4. Auto-assign: ID = `<PROJ>-<NNN>`, slug from title, order = next available.
-5. Create:
-```bash
-mkdir -p "$ROOT/project/<project>/tasks/<slug>"
-cat > "$ROOT/project/<project>/tasks/<slug>/.task" << 'EOF'
-id: <ID>
-slug: <slug>
-title: <title>
-project: <project>
-status: pending
-priority: <P0-P3>
-order: <N>
-created: <today>
-deadline: <date or "">
-completed: ""
-depends_on: []
-depends_on_cross: []
-description: |
-  <description>
-notes: ""
-plan_file: ""
-EOF
-```
-6. Report: "Task `<ID>`: `<title>` created in project `<project>`. Status: pending. Next: create a plan with 'make plan for <ID>'."
-
-### Update task ("start <TASK-ID>", "complete <TASK-ID>", "cancel <TASK-ID>", "block <TASK-ID>")
-
-- **start <ID>**: Check plan exists. Check no other task in same project is `in_progress`. Set `status: in_progress`.
-- **complete <ID>**: Set `status: completed`, `completed: today`.
-- **cancel <ID>**: Set `status: cancelled`.
-- **block <ID>**: Set `status: blocked`, ask reason → append to notes.
+Same as v3. "Complete" handled by Module 4 auto-continue.
 
 ---
 
-## Module 3: PLAN — 计划管理
+## Module 3: PLAN — AI Drafts, User Reviews
 
-Every task MUST have a `plan.md` before execution. No plan = not executable.
-
-### Plan lifecycle
-
-```
-draft → approved → executing → done
-```
-
-The `plan.md` file lives in the task directory: `<root>/project/<proj>/tasks/<task>/plan.md`
+**Principle:** AI writes the plan based on task description and project goal. User reviews the goal and success criteria. AI handles approach and steps autonomously.
 
 ### plan.md template
 
 ```markdown
 # Plan: <task-title>
-Task: <TASK-ID>
-Project: <project-name>
-Status: draft | approved | executing | done
-Created: YYYY-MM-DD
-Updated: YYYY-MM-DD
+Task: <TASK-ID> | Project: <project-name>
+Plan Status: draft | review | approved | executing | done
+Created: YYYY-MM-DD | Updated: YYYY-MM-DD
 
 ## Goal
-<One sentence: what does this task achieve?>
+<One sentence: what does this task achieve? Must align with project goal.>
 
-## Success Criteria
+## Success Criteria (USER REVIEWS THIS SECTION)
 - [ ] <measurable outcome 1>
 - [ ] <measurable outcome 2>
 
-## Approach
-<How will this be done? Architecture, tools, strategy.>
+## Approach (AI DETERMINES)
+<Architecture, tools, skills to invoke, strategy.>
 
-## Steps
-1. [ ] <step 1> → verify: <how to verify>
-2. [ ] <step 2> → verify: <how to verify>
-3. [ ] <step 3> → verify: <how to verify>
+## Steps (AI EXECUTES)
+1. [ ] <step 1> → verify: <check>
+2. [ ] <step 2> → verify: <check>
 
-## Risks
-- <risk 1> — mitigation: <how to handle>
+## Risks & Mitigations (AI IDENTIFIES)
+- <risk> → <mitigation>
 
 ## Notes
-<context, references, constraints>
+<Context, constraints, cross-project dependencies.>
 ```
 
-### Create plan ("make plan for <ID>", "create plan for <ID>")
+### Create plan ("make plan for <ID>", "plan for <ID>")
 
-1. Find task by ID, check it exists.
-2. Ask user: goal, approach, steps (or auto-draft based on description).
-3. Create `plan.md` in task directory.
+1. Find task. Read project `.project` for the goal.
+2. **AI auto-drafts the full plan** from task description + project goal.
+   - Infer goal from task description if not explicit
+   - Determine approach based on project context
+   - Break into verifiable steps
+3. Write `plan.md` with `Plan Status: draft`.
 4. Update `.task`: `plan_file: plan.md`, `status: planned`.
-5. If plan looks complete: `status: ready`.
-6. Report: "Plan created for `<ID>`. Task is now `ready` for execution."
+5. **Show user the goal + success criteria. Ask: "Does this look right?"**
+   - User says yes → set `Plan Status: approved`, task `status: ready`
+   - User says no → user corrects goal/criteria → set approved/ready
+   - User wants to edit approach/steps → they can, but AI handles those
+6. Report: "Plan for `<ID>` approved. Task is `ready`."
 
-### Check plan ("check plan for <ID>", "review plan for <ID>")
+### Review plan quality ("review plan for <ID>")
 
-1. Read `plan.md`.
-2. Validate: goal present? success criteria measurable? steps actionable? risks considered?
-3. Report gaps.
+AI checks (no user needed unless problem found):
+- Goal clear and aligned with project goal?
+- Success criteria measurable?
+- Steps have verifiable checkpoints?
+- Risks identified with mitigations?
+- Cross-project dependencies noted?
 
-### Approve plan ("approve plan for <ID>")
+Report findings. If all good: "Plan looks solid. Approve with 'approve plan for <ID>'."
 
-Set plan status to `approved`, task status to `ready`. Only `ready` tasks enter execution queue.
+### User edits plan
+
+User can edit `plan.md` of any non-active task at any time (see Concurrent Editing Safety). If Plan Status is `executing` and user edits, AI re-reads the plan on next checkpoint.
 
 ---
 
-## Module 4: EXECUTE — 执行模块
+## Module 4: EXECUTE — Autonomous, Zero-Interaction
 
-### Execution model
+**Principle:** Once user says "execute N projects", AI runs autonomously. No confirm dialogs. No "should I continue?". Auto-continue to next task.
 
-User says: "execute N projects" → system picks top `ready` task from each of N highest-priority projects, starts them. If a project has an `in_progress` task already, it's skipped (one-task rule).
+### Start execution ("execute N projects", "run tasks", "start execution", "auto")
 
-### How "top task" is determined per project
+1. If N not specified: use `config.parallelism` default.
+2. Compute execution plan (no user confirm):
+   - For each project: pick top `ready` task (dependency-sorted, priority-sorted)
+   - Filter: projects with `in_progress` are skipped (one-task rule)
+   - Pick top N projects by project priority
+3. Display plan, set each task `status: in_progress`, update STATE.json.
+4. **Begin executing immediately.** No confirmation step.
 
-1. Read all tasks in project
-2. Filter: `status == ready` AND `plan_file != ""`
-3. Sort by: dependency chain → priority → order
-4. Top = first in sorted list
+### Execution loop (autonomous)
 
-### Cross-project ordering (which N projects to run)
-
-1. List all projects
-2. Filter: projects that have at least one `ready` task
-3. Sort by: project priority → has in_progress task? (no first) → project name
-4. Pick top N
-
-### Start execution ("execute N projects", "run tasks", "start execution")
-
-1. If N not specified, ask: "How many projects to run in parallel?"
-2. Compute execution plan:
 ```
-## Execution Plan
-| # | Project | Task ID | Task Title | Priority |
-|---|---------|---------|------------|----------|
-| 1 | PlanSkill | PS-001 | Build 6 modules | P0 |
-| 2 | ExophMetry | EX-002 | Research papers | P1 |
+LOOP:
+  FOR each active task:
+    1. Read plan.md → find next unchecked step
+    2. Execute step (invoke other skills as needed)
+    3. Check step verification → mark [x] or retry
+    4. Write checkpoint (Module 5)
+    5. IF all steps done AND all success criteria met:
+       → mark task completed, update STATE.json
+       → auto-pick next ready task from SAME project (if exists)
+       → if no ready tasks in project, pick from next priority project
+  IF no active tasks remain:
+    → report "All tasks complete. Active projects: 0."
+    → suggest "assistant" for next actions
+  ELSE:
+    → continue loop
 ```
-3. Confirm with user.
-4. For each task in the plan:
-   - Set `status: in_progress`
-   - Update `.task`
-   - Update STATE.json
 
-### Execution STATE.json
+### Auto-continue
+
+When a task completes:
+1. Check same project for next `ready` task → auto-start it
+2. If none: check other projects with `ready` tasks → auto-start up to N
+3. Update STATE.json. Report: "PS-001 completed. Auto-starting PS-002."
+4. **No user prompt.** Continue executing.
+
+### User interrupts execution
+
+User can say "stop", "pause all", or "pause <project>" at any time:
+- Running tasks → checkpoint + set `status: blocked`
+- STATE.json updated
+- Report: "Paused. PS-001 at step 3/5. Resume with 'continue'."
+
+### STATE.json (enhanced)
 
 ```json
 {
-  "updated": "2026-05-20T12:00:00Z",
+  "updated": "...",
+  "mode": "executing",
+  "parallelism": 2,
   "active": {
-    "PlanSkill": {
-      "task_id": "PS-001",
-      "started": "2026-05-20T12:00:00Z",
-      "iterations": 3,
-      "last_action": "Editing SKILL.md",
-      "checkpoint": "PS-001-checkpoint-001.md"
-    }
+    "PlanSkill": {"task_id": "PS-001", "started": "...", "iterations": 3, "current_step": "3/5", "last_action": "..."},
+    "ExophMetry": {"task_id": "EX-002", "started": "...", "iterations": 1, "current_step": "1/4", "last_action": "..."}
   },
-  "history": [
-    {"project": "PlanSkill", "task_id": "PS-001", "action": "started", "time": "..."},
-    {"project": "PlanSkill", "task_id": "PS-001", "action": "checkpoint", "time": "..."}
-  ]
+  "completed_today": ["PS-001"],
+  "history": [...]
 }
 ```
 
-**IMPORTANT: The skill itself doesn't execute the tasks — Claude Code does.** The EXECUTE module orchestrates WHICH tasks to work on. When invoked, it tells the user (and this AI) what to work on next. The AI then switches to working on those tasks.
-
-### Continue execution ("continue", "resume", "what's next")
-
-1. Read STATE.json → find active or ready tasks
-2. If active tasks exist: "Currently working on: ..."
-3. If no active but ready tasks: suggest execution
-4. If nothing ready: suggest "create plan for pending tasks"
-
 ---
 
-## Module 5: CHECK — 监督模块
+## Module 5: CHECK — Major vs Minor Problems
+
+**Principle:** AI handles minor problems internally. Only MAJOR problems interrupt and ask user.
+
+### MAJOR problems → PAUSE + ASK USER
+
+| Problem | Detection | AI Action |
+|---------|-----------|-----------|
+| 🔴 Loop detected | Same action + same file 3x, no step progress | Pause task. Save checkpoint. Ask user: "PS-001 looped on step 3. Continue or revise plan?" |
+| 🔴 Unreachable criteria | Step fails 3 different approaches, success criteria clearly can't be met | Pause task. Report: "Success criteria X cannot be met because Y. Revise plan?" |
+| 🔴 Cross-project deadlock | Task A waits on Task B, Task B waits on Task A | Pause both. Report deadlock. Ask user to break the cycle. |
+| 🔴 Plan needs rewrite | User edits plan.md of executing task, structure changed | Pause. Re-read plan. Ask: "Plan changed significantly. Restart from step 1?" |
+
+### MINOR problems → AI handles internally
+
+| Problem | AI Auto-Fix |
+|---------|-------------|
+| 🟡 Step failed (1st try) | Analyze error, adjust approach, retry (max 3 attempts) |
+| 🟡 Test failure | Fix code, re-run. If 3x same failure → escalate to MAJOR |
+| 🟡 File conflict (user edited non-active file) | Re-read file, continue. No pause. |
+| 🟡 Slow progress | Write checkpoint, note in STATE.json, continue |
+| 🟡 Skill invocation error | Try alternative skill or manual approach |
 
 ### Auto-checkpoint
 
-Before every major tool call during task execution, write a checkpoint:
-
+Before every Write/Edit/Bash during execution, write a 3-line checkpoint:
 ```bash
-CHECKPOINT_DIR="$ROOT/project/<proj>/tasks/<task>/checkpoints"
-mkdir -p "$CHECKPOINT_DIR"
+echo "step:3/5 action:edit-SKILL.md time:$(date -Iseconds)" >> "$CHECKPOINT_DIR/log.txt"
 ```
 
-Checkpoint file: `<timestamp>-<action>.md`
-
+Full checkpoint (before risky operations or every 5 iterations):
 ```markdown
-# Checkpoint: <task-title>
-Time: 2026-05-20 12:05:00
-Task: <TASK-ID>
-Iteration: 4
-Last action: Updated SKILL.md line 50-80
-Current state: Module 2 Task section written, Module 3 Plan started
-Next action: Write Module 4 Execute section
-
-## Context snapshot
-<what was just done, what's next, any blockers>
+# CK: <TASK-ID> — Step 3/5
+Time: ... | Iterations: 5
+Done: Steps 1-2 complete. SKILL.md Module 4 rewritten.
+Next: Step 3 — update helper scripts.
+Blocker: none
 ```
 
-### Infinite loop detection ("check tasks", "task health")
+### Health check ("check tasks", "task health")
 
-Check running tasks for:
-1. **Same action repeated >3x** without progress → 🔴 LOOP DETECTED
-2. **No checkpoint in >10 iterations** → suggest checkpoint
-3. **Task runtime > user expectation** → ask if should continue
-4. **File churn**: same file edited >5x in one task → suggest plan review
-
-### Health check output
-
-```
-## Task Health Report
-| Task | Project | Iterations | Status | Alert |
-|------|---------|------------|--------|-------|
-| PS-001 | PlanSkill | 15 | running | ⚠️ High iterations, checkpoint? |
-| EX-001 | ExophMetry | 3 | running | OK |
-```
-
-### Loop recovery
-
-When loop detected:
-1. Pause task (set `status: blocked`, reason: "loop detected")
-2. Save detailed checkpoint
-3. Report: "Task `<ID>` paused: possible loop. Review checkpoint at `<path>`. Resume with 'resume <ID>'."
-
-### Resume after pause ("resume <ID>")
-
-1. Read latest checkpoint
-2. Restore context
-3. Set `status: in_progress`
-4. Continue from checkpoint's "next action"
+Show running tasks with iteration count, current step, alerts. No user action needed unless MAJOR flagged.
 
 ---
 
-## Module 6: ASSISTANT — AI互动助手
+## Module 6: ASSISTANT — Dashboard & Goal-Setting Guide
 
-The ASSISTANT module is the user-facing interface. When user says "assistant", "what should I do", "what's next", or "project overview", the ASSISTANT does:
+**Principle:** Show status. Don't interrogate. User comes to assistant for overview, not to answer questions.
 
-### Interactive workflow
+### Assistant modes
 
-```
-1. SHOW overview
-   → All projects with task counts and status
-   → Currently executing tasks
-   → Blocked items
+| Trigger | Behavior |
+|---------|----------|
+| "assistant" / "project overview" | Full dashboard. No questions. |
+| "what's next" / "what should I do" | Prioritized action list. User decides. |
+| "review <project>" | Deep dive: plan quality, task status, goal alignment |
+| "review plans" | Scan ALL plans across ALL projects. Flag weak plans (vague goals, unmeasurable criteria, missing risks). Show quality report. |
+| "iterate <project>" | Full cycle: show status → identify gaps → suggest next task → offer to draft plan |
 
-2. ASK guiding questions
-   → "Project X has pending tasks without plans. Create plans for them?"
-   → "Projects A, B, C have ready tasks. Execute N=2?"
-   → "Project Y has been idle for 2 weeks. Archive or reactivate?"
-   → "Task Z depends on cross-project task W. How to handle?"
-
-3. SUGGEST next actions
-   → Priority-sorted list of what to do next
-   → "1. Approve plan for PS-002"
-   → "2. Execute 2 projects (PlanSkill + ExophMetry)"
-   → "3. Check health of running tasks"
-
-4. DRIVE iteration
-   → Review → identify gaps → create tasks → make plans → execute → review
-```
-
-### Assistant triggers
-
-| User says | Assistant responds with |
-|-----------|------------------------|
-| "assistant" / "what should I do" | Full overview + prioritized suggestions |
-| "project overview" | Project summary table |
-| "what's next" | Next action list |
-| "review <project>" | Deep dive on one project |
-| "iterate <project>" | Full iteration cycle for one project |
-
-### Assistant output format
+### Dashboard output (no questions)
 
 ```
-# Plan Manager Assistant
+# Plan Manager — Status
 
-## 🏗️ Active (2)
-- **PlanSkill/PS-001** — Build 6 modules (P0, 15 iterations)
-- **ExophMetry/EX-002** — Research papers (P1, 3 iterations)
+## 🏗️ Executing (2/2 parallel)
+| Project | Task | Step | Iter | Status |
+|---------|------|------|------|--------|
+| PlanSkill | PS-001 — Rewrite SKILL.md | 3/5 | 4 | OK |
+| ExophMetry | EX-002 — Research papers | 1/4 | 2 | OK |
 
-## 📋 Ready to Execute (3)
-| Project | Task | Priority |
-|---------|------|----------|
-| CDMSystem | CD-001 — Add auth | P1 |
-| ExophMetry | EX-003 — Write summary | P2 |
-| PlanSkill | PS-002 — Write tests | P1 |
+## 📋 Ready Queue (3 tasks across 2 projects)
+| # | Project | Task | Priority |
+|---|---------|------|----------|
+| 1 | PlanSkill | PS-002 — Update helpers | P1 |
+| 2 | ExophMetry | EX-003 — Write summary | P2 |
+| 3 | CDMSystem | CD-001 — Build auth | P1 |
 
-## ⚠️ Needs Attention
-- **PlanSkill/PS-003** — No plan yet. Create one?
-- **CDMSystem/CD-002** — Blocked on CD-001
-- **ExophMetry** — 2 weeks idle
+## ⚠️ Needs User Attention
+- **PlanSkill/PS-003** — Plan is still draft. Review and approve?
+- **CDMSystem** — No tasks created. Set project goal first?
 
-## 💡 Suggested Next Action
-> Execute 2 projects: CDMSystem + PlanSkill. Say "execute 2 projects".
+## 🟢 Completed Today
+- PS-001 (partial — 3/5 steps)
 ```
+
+### Plan quality review ("review plans")
+
+AI scans all `plan.md` files. Flags:
+- ❌ Goal missing or vague ("implement stuff")
+- ❌ Success criteria not measurable ("works correctly")
+- ⚠️ No risks identified
+- ⚠️ Steps not verifiable
+- ✅ Good plan (all sections strong)
+
+Shows table. User decides which to fix.
+
+### Goal-setting guide
+
+When user says "I want to build X" or describes a new initiative:
+1. Help user formulate a clear one-sentence goal
+2. Offer to create project + auto-draft first task plan
+3. "Project `<name>` created with goal: `<goal>`. First task plan drafted. Review with 'review plans'."
 
 ---
 
 ## File Reference
 
-| File | Location | Module | Purpose |
-|------|----------|--------|---------|
-| Config | `~/.claude/plan-manager/config.json` | 0 | Root path |
-| `.project` | `<root>/project/<proj>/.project` | 1 | Project metadata |
-| `.task` | `<root>/project/<proj>/tasks/<task>/.task` | 2 | Task metadata |
-| `plan.md` | `<root>/project/<proj>/tasks/<task>/plan.md` | 3 | Execution plan |
-| `STATE.json` | `<root>/STATE.json` | 4,5 | Global execution state |
-| `DOCMAP.md` | `<root>/DOCMAP.md` | — | Document index |
-| Checkpoints | `<root>/project/<proj>/tasks/<task>/checkpoints/` | 5 | Auto-saved state |
+| File | Purpose |
+|------|---------|
+| `~/.claude/plan-manager/config.json` | Root path, parallelism, autonomy level |
+| `<root>/project/<proj>/.project` | Project metadata + goal |
+| `<root>/project/<proj>/tasks/<task>/.task` | Task state machine |
+| `<root>/project/<proj>/tasks/<task>/plan.md` | AI-drafted, user-reviewed plan |
+| `<root>/project/<proj>/tasks/<task>/checkpoints/` | Auto-saved state |
+| `<root>/STATE.json` | Global execution state |
+| `<root>/DOCMAP.md` | Document index |
 
 ## Helper Scripts
 
