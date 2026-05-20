@@ -65,21 +65,39 @@ allowed-tools:
 **AI does (autonomously, no user prompts):**
 - Draft plans from task descriptions
 - Execute tasks step by step, invoke other skills as needed
+- Write/edit ONLY within the active task's own directory (`project/<proj>/tasks/<task-slug>/`)
+- Read any file for context (other tasks, plans, project metadata) — read-only
 - Auto-checkpoint before major actions
 - Auto-continue: when one task completes, pick next ready task
 - Handle minor problems internally (retry, course-correct, re-plan approach)
 
-## Concurrent Editing Safety
+## File Isolation (CRITICAL)
 
-| Scope | Safe to edit? |
-|-------|---------------|
-| Non-running project (any file) | ✅ Yes — fully safe |
-| Running project, non-active task (plan, description) | ✅ Yes — task isn't executing |
-| Running project, active task plan.md | ⚠️ Read OK. Edit only to add notes, not restructure |
-| Running project, active task .task file | 🔴 No — AI is updating status fields |
-| Running project, .project metadata | ⚠️ Read OK. Don't change status/priority mid-execution |
+During execution, each task has a **sandbox** — its own task directory:
 
-User can freely create new tasks, edit plans of pending tasks, reorder priorities — even while other projects are executing.
+```
+project/CDMSystem/
+├── .project                    ← 🔒 AI never writes here during execution
+├── README.md                   ← 🔒 AI never writes here during execution
+└── tasks/
+    ├── build-auth/             ← ✅ Task "build-auth" writes HERE only
+    │   ├── .task
+    │   ├── plan.md
+    │   └── checkpoints/
+    └── other-task/             ← 🔒 Task "build-auth" never writes here
+        ├── .task
+        └── plan.md
+```
+
+| Operation | Allowed during task execution? |
+|-----------|-------------------------------|
+| Read any file in any project | ✅ Yes — needed for context |
+| Write/edit within own task directory | ✅ Yes — this is the work |
+| Write/edit `.project` (own project) | 🔴 Never — user owns project metadata |
+| Write/edit other task's `.task` or `plan.md` | 🔴 Never — each task is isolated |
+| Write/edit other project (any file) | 🔴 Never — cross-project isolation |
+| Write `<root>/STATE.json` | ✅ Module 4 only, to update execution state |
+| Write `<root>/DOCMAP.md` | ✅ Only when explicitly running "update doc index" |
 
 ---
 
@@ -119,6 +137,7 @@ User can freely create new tasks, edit plans of pending tasks, reorder prioritie
 - Every task MUST have a `plan.md` with `Status: approved` before execution → otherwise status stays `planned`, not `ready`
 - AI drafts plans; user reviews goals and success criteria
 - AI auto-continues: complete → pick next → execute, without asking
+- **File isolation:** A running task writes ONLY within its own task directory. Never edits other tasks, `.project`, or sibling folders in the same project. Read is unrestricted.
 
 **Task lifecycle:**
 ```
@@ -318,8 +337,10 @@ LOOP:
   FOR each active task:
     1. Read plan.md → find next unchecked step
     2. Execute step (invoke other skills as needed)
+       → CONSTRAINT: All Write/Edit ops target ONLY <own-task-dir>/
+       → Read is unrestricted — read other tasks/plans for context freely
     3. Check step verification → mark [x] or retry
-    4. Write checkpoint (Module 5)
+    4. Write checkpoint to <own-task-dir>/checkpoints/
     5. IF all steps done AND all success criteria met:
        → mark task completed, update STATE.json
        → auto-pick next ready task from SAME project (if exists)
@@ -386,6 +407,7 @@ User can say "stop", "pause all", or "pause <project>" at any time:
 | 🟡 File conflict (user edited non-active file) | Re-read file, continue. No pause. |
 | 🟡 Slow progress | Write checkpoint, note in STATE.json, continue |
 | 🟡 Skill invocation error | Try alternative skill or manual approach |
+| 🟡 File isolation breach (self-detected) | Immediately revert. Re-read correct target. Redirect write to own task dir. Log incident. If 3x → escalate to MAJOR. |
 
 ### Auto-checkpoint
 
