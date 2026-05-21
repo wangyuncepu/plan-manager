@@ -1,6 +1,6 @@
 {
   "name": "plan-manager",
-  "description": "6-module project orchestration system for Claude Code. Project-centric, task-based execution with cross-project parallel coordination. Modules: Project, Task, Plan, Execute, Check, Assistant.",
+  "description": "Autonomous multi-project orchestration system for Claude Code. User sets goals and reviews plans; AI handles drafting, execution, and routine decisions. Intervenes only on major problems.",
   "author": {
     "name": "wangyuncepu",
     "url": "https://github.com/wangyuncepu"

@@ -5,21 +5,27 @@ Project-centric, task-based execution with cross-project parallel coordination.
 
 ## Install
 
-### Claude Code plugin (recommended)
+### Option A: Claude Code Plugin (recommended)
+
+From within Claude Code:
 
 ```
-/plugin install github:wangyuncepu/plan-manager
+/plugin marketplace add wangyuncepu/plan-manager
+/plugin install plan-manager@plan-manager
 ```
 
-### Manual
+Skill auto-registers immediately — no reload needed.
+
+### Option B: Manual (git clone)
 
 ```bash
 git clone https://github.com/wangyuncepu/plan-manager.git
 cd plan-manager
 bash install.sh
+/reload-plugins
 ```
 
-Then run `/reload-plugins`.
+`install.sh` creates a symlink from `~/.claude/skills/plan-manager` → this repo. Only needed for manual installs; plugin install handles everything automatically.
 
 ## Modules
 
