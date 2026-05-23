@@ -340,6 +340,34 @@ FOR each active task, in a continuous loop:
 
 Task's **success criteria** in `plan.md` serve as the completion promise. When ALL criteria are checked `[x]` AND all plan steps are checked `[x]`, the task is complete. AI writes "COMPLETED" to the iteration log.
 
+### Skill selection during execution
+
+plan-manager is the **orchestrator**, not the doer. When executing a step, it tells Claude Code what to do. Claude Code then selects the best available skill based on the step's nature:
+
+**Selection logic (Claude Code handles this automatically):**
+
+| Step type | Example | Likely skill invoked |
+|-----------|---------|---------------------|
+| Write code / implement | "Build auth middleware" | `superpowers:test-driven-development` |
+| Debug / fix | "Fix login bug" | `superpowers:systematic-debugging` |
+| Review code | "Review PR changes" | `review` or `superpowers:requesting-code-review` |
+| Write tests | "Add unit tests for API" | `superpowers:test-driven-development` |
+| Plan / design | "Design database schema" | `superpowers:writing-plans` or `superpowers:brainstorming` |
+| Write docs | "Document the API" | `document-generate` |
+| Research | "Find best library for X" | `everything-claude-code:deep-research` |
+| Ship / deploy | "Create PR and push" | `ship` or `land-and-deploy` |
+| QA / test site | "Test the login flow" | `qa` or `qa-only` |
+| Security audit | "Check for vulnerabilities" | `cso` or `security-review` |
+| Git operations | "Commit and push" | `superpowers:finishing-a-development-branch` |
+| Run app / verify | "Start dev server" | `run` or `verify` |
+
+**Key principle:** plan-manager never explicitly names which skill to use in `plan.md` steps. It describes **what** needs to be done. Claude Code's skill routing system matches the intent to the best available skill.
+
+**What plan-manager does control:**
+- `plan.md` step descriptions should be clear about intent (e.g. "Write tests for X" not "Use TDD skill on X")
+- File isolation: all skill output goes to `<task-dir>/`, plan-manager enforces this
+- Step verification: after a skill completes, plan-manager checks the verification criteria
+
 ### Crash recovery (auto-resume)
 
 On startup, check STATE.json for tasks with `status: in_progress`:
