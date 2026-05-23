@@ -128,7 +128,8 @@ User can freely create new tasks, edit plans of pending tasks, reorder prioritie
   "parallelism": 2,
   "autonomy": "full",
   "max_iterations_per_task": 30,
-  "overnight": false
+  "overnight": false,
+  "language": "zh"
 }
 ```
 
@@ -139,6 +140,7 @@ User can freely create new tasks, edit plans of pending tasks, reorder prioritie
 | `autonomy` | `full` | `full`=never ask; `plan-review`=ask before plan changes; `supervised`=ask before each task |
 | `max_iterations_per_task` | 30 | Hard cap per task. Task pauses when hit. |
 | `overnight` | false | Enable overnight mode: extended caps, no user prompts ever |
+| `language` | `zh` | Output language: `zh` (Chinese) or `en` (English) |
 
 **Core rules:**
 - One task `in_progress` per project at a time
@@ -159,16 +161,32 @@ cancelled  (no plan) blocked   blocked
 
 ### On every invocation
 
-1. Read `~/.claude/plan-manager/config.json` -> `$ROOT`, `$PARALLELISM`, `$AUTONOMY`, `$MAX_ITER`, `$OVERNIGHT`
+1. Read `~/.claude/plan-manager/config.json` -> `$ROOT`, `$PARALLELISM`, `$AUTONOMY`, `$MAX_ITER`, `$OVERNIGHT`, `$LANG`
 2. If missing: configure.
 
 ### Configure ("configure plan manager", "setup plan manager")
 
-Ask user for root path. Create structure. Write config with defaults.
+1. Ask user for root path.
+2. Ask user for language: `zh` (Chinese) or `en` (English). Default `zh`.
+3. Create structure. Write config with defaults:
+```bash
+cat > ~/.claude/plan-manager/config.json << EOF
+{"root":"$ROOT","parallelism":2,"autonomy":"full","max_iterations_per_task":30,"overnight":false,"language":"$LANG"}
+EOF
+```
+
+### Language behavior
+
+| Setting | Dashboard | Plan templates | Messages | AskUserQuestion |
+|---------|-----------|----------------|----------|-----------------|
+| `zh` | Chinese headers | Chinese labels | Chinese | Chinese |
+| `en` | English headers | English labels | English | English |
+
+All file content (`.project`, `.task`, `plan.md`) written in the configured language.
 
 ### Change settings
 
-Update individual config keys. Examples: "set parallelism to 3", "max iterations 50", "overnight on".
+Update individual config keys. Examples: "set language to en", "set parallelism to 3", "max iterations 50", "overnight on".
 
 ---
 
