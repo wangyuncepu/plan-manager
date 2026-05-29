@@ -1,11 +1,11 @@
 ---
 name: plan-manager
-version: 4.1.0
+version: 4.2.0
 description: |
-  Autonomous multi-project orchestration system. User sets goals and reviews
-  plans; AI handles drafting, execution, and routine decisions. Intervenes
-  only on major problems. Long-running overnight execution with max-iteration
-  caps, completion promises, progress velocity, and crash recovery.
+  Dual-role autonomous project orchestration system.
+  strategist — analyze projects, review plans, discuss goals and direction.
+  executor — execute task loops, auto-continue, overnight runs.
+  Configurable via `role` in config.json. Switch anytime.
   1. Project — project registry and lifecycle
   2. Task — priority/dependency ordering, one active per project
   3. Plan — AI drafts plans from goals, user reviews and approves
@@ -44,6 +44,13 @@ triggers:
   - resume
   - auto
   - auto mode
+  - strategist
+  - executor
+  - switch to strategist
+  - switch to executor
+  - analyze project
+  - discuss direction
+  - review project
 allowed-tools:
   - Read
   - Write
@@ -54,7 +61,114 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# /plan-manager - Autonomous Multi-Project Orchestration
+# /plan-manager - Dual-Role Autonomous Project Orchestration
+
+## Dual-Role System
+
+plan-manager has two roles. Switch anytime with "switch to strategist" or "switch to executor".
+
+### strategist — 决策者
+
+**Purpose:** Strategic analysis and planning. Study the project holistically.
+
+**Role behaviors:**
+- Read and analyze all project files freely (no file-isolation write restriction applies since no execution)
+- Discuss and clarify project goals with user
+- Analyze current directory structure — what exists, what's missing
+- Assess current project state: what's done, what's blocked, what's next
+- Research and propose future development direction
+- Identify concrete improvement actions → draft them as new tasks
+- Review all plan.md files for quality (measurable criteria, clear goals)
+- Write/update `.project` goal and description fields
+- Create new tasks and draft plans for user review
+
+**Available operations:**
+| Trigger | Behavior |
+|---------|----------|
+| "analyze <project>" / "review <project>" | Deep analysis: structure, state, gaps, direction |
+| "discuss direction for <project>" | Interactive goal-setting and roadmap discussion |
+| "review plans" | Scan all plans, flag quality issues |
+| "create project" / "add task" / "make plan" | Full Module 1-2-3 access |
+| "project overview" / "assistant" | Full dashboard |
+| "execute" / "overnight" | **BLOCKED** — switch to executor first |
+
+**Analysis output format:**
+```
+# Project Analysis: <project-name>
+
+## Goal
+<current goal. If missing, propose one.>
+
+## Directory Structure
+<what exists, what's missing, suggestions.>
+
+## Current State
+- Completed: N tasks
+- In Progress: 0 (strategist mode — nothing executing)
+- Pending: N tasks
+- Blocked: N tasks
+
+## Plan Quality Review
+| Task | Plan | Goal Clear | Criteria Measurable | Issues |
+|------|------|------------|---------------------|--------|
+| T-001 | ✓ | ✓ | ✗ | Criteria vague: "works correctly" |
+
+## Future Direction
+<proposed next steps, improvements, new features>
+
+## Suggested Actions
+1. <concrete action 1>
+2. <concrete action 2>
+```
+
+### executor — 执行者
+
+**Purpose:** Execute tasks and iterate projects. The working mode.
+
+**Role behaviors:**
+- Execute plan steps (Module 4 Ralph-style loop)
+- Auto-checkpoint and auto-continue
+- Strict file isolation: writes ONLY within active task directory
+- Handle minor problems internally, pause on MAJOR problems
+- Support overnight unattended execution
+- Track progress velocity
+
+**Available operations:**
+| Trigger | Behavior |
+|---------|----------|
+| "execute N projects" / "auto" | Start autonomous execution loop |
+| "overnight" | Start overnight unattended execution |
+| "continue" / "resume" | Resume from checkpoint |
+| "check tasks" / "task health" | Health report |
+| "list tasks" / "task status" | Quick task status |
+| "complete TASK-ID" / "start TASK-ID" | Manual task state change |
+| "create project" / "add task" | Allowed (safe: only non-running projects) |
+| "make plan" / "review plans" | Read-only plan review (edits only to non-executing tasks) |
+| "analyze <project>" | Read-only analysis (no structural changes) |
+
+**In executor mode, the AI actively works.** It doesn't just report — it executes.
+
+### Role switching
+
+```
+switch to strategist    → role: strategist. Save to config.
+switch to executor      → role: executor. Save to config.
+```
+
+If active executor tasks exist when switching to strategist: warn, checkpoint all tasks, pause them.
+
+### Role comparison
+
+| Aspect | strategist | executor |
+|--------|-----------|----------|
+| Primary action | Analyze, discuss, plan | Execute, build, iterate |
+| File writes | `.project`, new `plan.md`, new `.task` only | Within active `<task-dir>/` only |
+| Task execution | Never | Yes — Ralph-style loop |
+| User interaction | High — discussion, goal-setting | Low — only on MAJOR problems |
+| Overnight mode | N/A | Yes |
+| Best for | Project kickoff, review, replanning | Daily work, overnight runs |
+
+---
 
 ## User Role & Autonomy Model
 
@@ -63,12 +177,13 @@ allowed-tools:
 - Review and approve AI-drafted plans
 - Intervene on MAJOR problems (loops, deadlocks, unreachable goals)
 - Edit non-running projects anytime; edit non-active tasks in running projects
+- Switch between strategist/executor roles as needed
 - Abort/restart overnight runs
 
 **AI does (autonomously, no user prompts):**
-- Draft plans from task descriptions
-- Execute tasks step by step, invoke other skills as needed
-- Write/edit ONLY within the active task's own directory
+- strategist role: deep project analysis, plan quality review, direction proposals
+- executor role: execute tasks step by step, invoke other skills as needed
+- Write/edit ONLY within the active task's own directory (executor)
 - Read any file for context - read-only
 - Auto-checkpoint before major actions
 - Auto-continue: when one task completes, pick next ready task
@@ -77,7 +192,7 @@ allowed-tools:
 
 ## File Isolation (CRITICAL)
 
-During execution, each task has a **sandbox** - its own task directory:
+During execution (executor role only), each task has a **sandbox** — its own task directory:
 
 ```
 project/CDMSystem/
@@ -91,17 +206,14 @@ project/CDMSystem/
     └── other-task/             # Task "build-auth" never writes here
 ```
 
-| Operation | Allowed during task execution? |
-|-----------|-------------------------------|
-| Read any file in any project | Yes - needed for context |
-| Write/edit within own task directory | Yes - this is the work |
-| Write/edit .project (own project) | Never - user owns project metadata |
-| Write/edit other task's .task or plan.md | Never - each task is isolated |
-| Write/edit other project (any file) | Never - cross-project isolation |
-| Write `<root>/STATE.json` | Module 4 only, to update execution state |
-| Write `<root>/DOCMAP.md` | Only when explicitly running "update doc index" |
-
-User can freely create new tasks, edit plans of pending tasks, reorder priorities - even while other projects are executing.
+| Operation | strategist | executor |
+|-----------|-----------|----------|
+| Read any file | Yes | Yes |
+| Write/edit within own task dir | N/A | Yes |
+| Write .project | Yes (goal, desc, notes) | Never |
+| Write new plan.md / .task | Yes | Only for non-executing tasks |
+| Write other project files | Yes (analysis only) | Never |
+| Write STATE.json | No | Yes (Module 4) |
 
 ---
 
@@ -129,13 +241,15 @@ User can freely create new tasks, edit plans of pending tasks, reorder prioritie
   "autonomy": "full",
   "max_iterations_per_task": 30,
   "overnight": false,
-  "language": "zh"
+  "language": "zh",
+  "role": "strategist"
 }
 ```
 
 | Config key | Default | Meaning |
 |------------|---------|---------|
 | `root` | (required) | Management root path |
+| `role` | `strategist` | `strategist`=analyze, plan, discuss; `executor`=execute, build, iterate |
 | `parallelism` | 2 | Default N for "execute N projects" |
 | `autonomy` | `full` | `full`=never ask; `plan-review`=ask before plan changes; `supervised`=ask before each task |
 | `max_iterations_per_task` | 30 | Hard cap per task. Task pauses when hit. |
@@ -161,17 +275,21 @@ cancelled  (no plan) blocked   blocked
 
 ### On every invocation
 
-1. Read `~/.claude/plan-manager/config.json` -> `$ROOT`, `$PARALLELISM`, `$AUTONOMY`, `$MAX_ITER`, `$OVERNIGHT`, `$LANG`
-2. If missing: configure.
+1. Read `~/.claude/plan-manager/config.json` -> all config keys
+2. CHECK current role. Behavior branches:
+   - `strategist`: no execution. Focus on analysis, planning, review.
+   - `executor`: ready to execute. Check for orphaned tasks (crash recovery).
+3. If missing: configure.
 
 ### Configure ("configure plan manager", "setup plan manager")
 
 1. Ask user for root path.
 2. Ask user for language: `zh` (Chinese) or `en` (English). Default `zh`.
-3. Create structure. Write config with defaults:
+3. Ask user for default role: `strategist` or `executor`. Default `strategist`.
+4. Create structure. Write config with defaults:
 ```bash
 cat > ~/.claude/plan-manager/config.json << EOF
-{"root":"$ROOT","parallelism":2,"autonomy":"full","max_iterations_per_task":30,"overnight":false,"language":"$LANG"}
+{"root":"$ROOT","role":"$ROLE","parallelism":2,"autonomy":"full","max_iterations_per_task":30,"overnight":false,"language":"$LANG"}
 EOF
 ```
 
@@ -182,11 +300,9 @@ EOF
 | `zh` | Chinese headers | Chinese labels | Chinese | Chinese |
 | `en` | English headers | English labels | English | English |
 
-All file content (`.project`, `.task`, `plan.md`) written in the configured language.
-
 ### Change settings
 
-Update individual config keys. Examples: "set language to en", "set parallelism to 3", "max iterations 50", "overnight on".
+Update individual config keys. Examples: "switch to executor", "set language to en", "set parallelism to 3", "max iterations 50", "overnight on".
 
 ---
 
@@ -211,11 +327,31 @@ Table with project name, status, goal, tasks (active/total), priority.
 ### Create project ("create project <name>")
 
 1. Slugify name. 2. Ask user for the goal. 3. Write `.project`.
-4. Report: "Project `<name>` created with goal: `<goal>`"
+4. Report created.
 
 ### Show project ("show project <name>")
 
 Read `.project`, list tasks with status, show active task details.
+
+### Analyze project ("analyze <project>", "review <project>") — strategist primary
+
+**Only in strategist mode.** Deep project analysis:
+
+1. Read `.project`, all `.task` files, all `plan.md` files
+2. Map directory structure — what files exist, what's missing
+3. Assess: completed vs pending vs blocked tasks
+4. Review plan quality: goals clear? criteria measurable?
+5. Compare current state against project goal — gaps?
+6. Propose future direction and concrete next actions
+7. Output full analysis report (see Dual-Role System section for format)
+
+### Discuss direction ("discuss direction for <project>") — strategist only
+
+Interactive goal-setting and roadmap session:
+1. Show current goal. Ask: still accurate? needs update?
+2. Analyze completed work. Ask: what's the most valuable next step?
+3. Propose concrete new tasks. Draft plans for user review.
+4. Update `.project` goal if changed.
 
 ---
 
@@ -237,7 +373,7 @@ depends_on_cross: []
 description: string
 notes: string
 plan_file: string
-max_iterations: number      # per-task override of config default, or 0 = use default
+max_iterations: number
 ```
 
 ### Task ordering (per project)
@@ -248,13 +384,11 @@ Per-project table with status, plan existence, priority.
 
 ### Create task ("add task to <project>", "new task")
 1. List projects if not specified. 2. Ask: title, priority, description, max_iterations (optional).
-3. Auto-assign ID, slug, order. 4. Create `.task`. 5. Report created + suggest drafting plan.
+3. Auto-assign ID, slug, order. 4. Create `.task`. 5. Report created.
 
 ---
 
-## Module 3: PLAN - AI Drafts, User Reviews
-
-**Principle:** AI writes the plan from task description + project goal. User reviews goal and success criteria.
+## Module 3: PLAN — AI Drafts, User Reviews
 
 ### plan.md template
 ```markdown
@@ -288,255 +422,92 @@ max_iterations: <number or "default">
 
 1. Find task. Read project `.project` for the goal.
 2. **AI auto-drafts the full plan** from task description + project goal.
-3. Write `plan.md` with `Plan Status: draft`. Update `.task`.
-4. **Show user the goal + success criteria.** "Does this look right?"
-   - Yes -> `approved` + task `ready`
-   - No -> user corrects -> approved + ready
-5. Report: "Plan for `<ID>` approved. Task is `ready`."
+3. Write `plan.md`. Update `.task`.
+4. **Show user the goal + success criteria.** Get approval.
+5. Report created.
 
-### Review plan quality ("review plan for <ID>")
+### Review plan quality ("review plan for <ID>", "review plans")
 
-AI validates: goal clear + aligned? criteria measurable? steps verifiable? risks covered? iterations reasonable?
+AI validates all plans. In strategist mode: full deep review. In executor mode: quick check.
 
 ---
 
-## Module 4: EXECUTE - Ralph-Style Autonomous Loop
+## Module 4: EXECUTE — Ralph-Style Autonomous Loop
 
-**Principle:** Once started, AI runs autonomously. Each iteration builds on the last. Max-iteration cap prevents runaway. Completion promise gates exit.
-
-**Inspired by:** Ralph Wiggum Loop pattern - the prompt never changes, but the codebase evolves each iteration.
+**executor role only.** In strategist mode, this module is disabled.
 
 ### Start execution ("execute N projects", "run tasks", "auto", "overnight")
 
-1. N = specified or config.parallelism default.
-2. If "overnight": set config.overnight=true, double max_iterations, no user prompts EVER (even MAJOR problems auto-pause without asking in overnight mode).
-3. Compute execution plan, display it, set tasks `in_progress`, update STATE.json.
-4. **Begin executing immediately.**
+If in strategist mode: "Cannot execute in strategist mode. Switch to executor first: 'switch to executor'."
 
-### Execution loop (Ralph-style)
+Otherwise: same as v4.1 — compute execution plan, set tasks `in_progress`, begin executing.
 
-```
-FOR each active task, in a continuous loop:
+### Execution loop, iteration log, completion promise, crash recovery, auto-continue, max-iteration safety, overnight mode, STATE.json
 
-  ITERATION:
-    1. Read plan.md -> find next unchecked step
-    2. Execute step (invoke other skills as needed)
-       CONSTRAINT: All Write/Edit ops target ONLY <own-task-dir>/
-    3. Check step verification -> mark [x] or retry (max 3)
-    4. Write iteration log:
-       echo "[$(date -Iseconds)] iter:$N step:S/N action:$ACTION result:$RESULT" \
-         >> <task-dir>/checkpoints/iterations.log
-    5. Auto-validate: run tests/lint/type-check if applicable
-       - PASS: continue
-       - FAIL: fix + retry (max 3, then escalate)
-    6. Check progress velocity (Module 5):
-       - PROGRESS: steps advancing, files changing -> continue
-       - STALL: same action 3x no change -> self-correct or pause
-    7. IF all steps done AND all success criteria met:
-       -> ITERATION LOG: "COMPLETED $(date -Iseconds)"
-       -> mark task completed, update STATE.json
-       -> auto-pick next ready task from same or next project
-    8. IF iteration count >= max_iterations:
-       -> PAUSE task. Log: "MAX_ITER reached. Checkpoint saved."
-       -> Report to user (non-blocking in overnight mode)
-```
-
-### Iteration log format
-
-```
-[2026-05-21T03:15:00+08:00] iter:1 step:1/5 action:read-plan.md result:OK
-[2026-05-21T03:15:30+08:00] iter:2 step:1/5 action:edit-SKILL.md result:OK
-[2026-05-21T03:16:00+08:00] iter:3 step:1/5 action:run-tests result:FAIL
-[2026-05-21T03:16:30+08:00] iter:4 step:1/5 action:fix-tests result:OK
-[2026-05-21T03:17:00+08:00] iter:5 step:2/5 action:edit-helpers.sh result:OK
-...
-[2026-05-21T05:30:00+08:00] iter:28 step:5/5 action:final-verify result:OK
-[2026-05-21T05:30:10+08:00] COMPLETED
-```
-
-### Completion promise
-
-Task's **success criteria** in `plan.md` serve as the completion promise. When ALL criteria are checked `[x]` AND all plan steps are checked `[x]`, the task is complete. AI writes "COMPLETED" to the iteration log.
-
-### Skill selection during execution
-
-plan-manager is the **orchestrator**, not the doer. When executing a step, it tells Claude Code what to do. Claude Code then selects the best available skill based on the step's nature:
-
-**Selection logic (Claude Code handles this automatically):**
-
-| Step type | Example | Likely skill invoked |
-|-----------|---------|---------------------|
-| Write code / implement | "Build auth middleware" | `superpowers:test-driven-development` |
-| Debug / fix | "Fix login bug" | `superpowers:systematic-debugging` |
-| Review code | "Review PR changes" | `review` or `superpowers:requesting-code-review` |
-| Write tests | "Add unit tests for API" | `superpowers:test-driven-development` |
-| Plan / design | "Design database schema" | `superpowers:writing-plans` or `superpowers:brainstorming` |
-| Write docs | "Document the API" | `document-generate` |
-| Research | "Find best library for X" | `everything-claude-code:deep-research` |
-| Ship / deploy | "Create PR and push" | `ship` or `land-and-deploy` |
-| QA / test site | "Test the login flow" | `qa` or `qa-only` |
-| Security audit | "Check for vulnerabilities" | `cso` or `security-review` |
-| Git operations | "Commit and push" | `superpowers:finishing-a-development-branch` |
-| Run app / verify | "Start dev server" | `run` or `verify` |
-
-**Key principle:** plan-manager never explicitly names which skill to use in `plan.md` steps. It describes **what** needs to be done. Claude Code's skill routing system matches the intent to the best available skill.
-
-**What plan-manager does control:**
-- `plan.md` step descriptions should be clear about intent (e.g. "Write tests for X" not "Use TDD skill on X")
-- File isolation: all skill output goes to `<task-dir>/`, plan-manager enforces this
-- Step verification: after a skill completes, plan-manager checks the verification criteria
-
-### Crash recovery (auto-resume)
-
-On startup, check STATE.json for tasks with `status: in_progress`:
-1. Read `<task-dir>/checkpoints/iterations.log` -> find last iteration
-2. Read latest full checkpoint
-3. Restore context from checkpoint
-4. Continue from last incomplete step
-5. Log: "RECOVERED $(date -Iseconds) from crash"
-
-If session ended unexpectedly (power loss, network drop, process kill), the next invocation of any plan-manager trigger auto-detects the orphaned `in_progress` tasks and offers to resume.
-
-### Auto-continue
-
-When a task completes:
-1. Check same project for next `ready` task -> auto-start it
-2. If none: check other projects -> auto-start up to N
-3. Update STATE.json. Report: "TASK-001 completed. Auto-starting TASK-002."
-4. **No user prompt.** Continue.
-
-### Max-iteration safety
-
-| Scenario | Action |
-|----------|--------|
-| Iteration < 70% of max | Normal execution |
-| Iteration 70-90% of max | Log warning. Increase checkpoint frequency. |
-| Iteration >= max_iterations | Pause task. Save checkpoint. Flag for user review ("Task TASK-001 hit max iterations. Review progress and decide: continue, revise plan, or cancel.") |
-| Overnight mode + max reached | Auto-pause. Leave clear checkpoint. Do NOT wake user. |
-
-### Overnight mode ("overnight", "run overnight")
-
-```
-/plan-manager overnight
-```
-
-1. Sets `overnight: true` in STATE.json
-2. Doubles config.max_iterations_per_task
-3. All MAJOR problems auto-pause without user prompt (save checkpoint, move to next task)
-4. On completion or stall-out: write a summary report to `<root>/OVERNIGHT-REPORT.md`
-5. Morning: user runs "assistant" -> sees overnight report
-
-### STATE.json (v4.1)
-
-```json
-{
-  "updated": "2026-05-21T03:17:00+08:00",
-  "mode": "executing",
-  "overnight": false,
-  "parallelism": 2,
-  "active": {
-    "PlanSkill": {
-      "task_id": "PS-001",
-      "started": "2026-05-21T03:15:00+08:00",
-      "iterations": 28,
-      "max_iterations": 30,
-      "current_step": "5/5",
-      "last_action": "final-verify",
-      "velocity": "progressing"
-    }
-  },
-  "completed_today": ["PS-001"],
-  "paused": [],
-  "history": [...]
-}
-```
+All unchanged from v4.1. See previous version for full details.
 
 ---
 
-## Module 5: CHECK - Progress Velocity & Crash Recovery
+## Module 5: CHECK — Progress Velocity & Crash Recovery
 
-**Principle:** Detect stalls before they become loops. Auto-recover from crashes. Track progress velocity.
+### Progress velocity tracking, MAJOR/MINOR problems, crash recovery, overnight report
 
-### Progress velocity tracking
-
-After each iteration, classify task velocity:
-
-| Velocity | Criteria | Action |
-|----------|----------|--------|
-| `progressing` | Steps advancing, files changing, tests passing more | Continue |
-| `slow` | Same step 3+ iterations but still making small changes | Write detailed checkpoint. Continue. |
-| `stalling` | Same action 2x same file, no test/criteria improvement | Self-correct: try different approach. |
-| `stalled` | Same action 3x same file, zero progress | PAUSE. This is a MAJOR event. Save checkpoint. |
-
-Velocity written to STATE.json after each iteration.
-
-### MAJOR problems -> PAUSE + checkpoint
-
-| Problem | Detection | Action |
-|---------|-----------|--------|
-| Stalled (3x same, no progress) | Velocity = `stalled` | Pause. Save checkpoint. Non-overnight: ask user. Overnight: auto-pause, continue next task. |
-| Unreachable criteria | 3 different approaches fail | Pause. Report: "Criteria X unreachable because Y. Revise plan." |
-| Cross-project deadlock | Circular `depends_on_cross` | Pause both. Report deadlock. |
-| Plan restructured | User edits executing plan's structure | Pause. Re-read plan. Offer restart. |
-| Max iterations reached | iter >= max_iterations | Pause. Save checkpoint. Flag for review. |
-| Task isolation violated | Write/Edit targets outside own task dir | Immediately revert. If 3x: pause + MAJOR alert. |
-
-### MINOR problems -> AI handles internally
-
-| Problem | Auto-Fix |
-|---------|----------|
-| Step failed (1st try) | Analyze error, adjust approach, retry (max 3) |
-| Test/lint failure | Fix code, re-run. 3x same failure -> escalate MAJOR |
-| File conflict (user edited non-active) | Re-read file, continue |
-| Slow but progressing (velocity=slow) | Write checkpoint, continue |
-| Skill invocation error | Try alternative skill or manual approach |
-
-### Crash recovery
-
-On ANY plan-manager invocation, before executing the requested operation:
-
-1. Read STATE.json
-2. Find any tasks with `status: in_progress`
-3. If found + STATE.json `mode: executing`:
-   - Read iterations.log for each orphaned task
-   - Report: "Found N orphaned tasks from previous session."
-   - Offer: "Resume from last checkpoint?" (default: yes if overnight)
-   - If yes: restore context from checkpoint, continue loop
-   - If no: mark tasks `blocked`, reason: "session-ended"
-
-### Overnight report
-
-After overnight mode ends (all tasks complete or all stalled):
-```markdown
-# Overnight Report - 2026-05-21
-Session: 03:15 - 05:30 (2h 15m)
-
-## Completed
-- PS-001: Rewrite SKILL.md (28 iterations, ~$3.50)
-- EX-002: Research papers (15 iterations, ~$1.80)
-
-## Paused (needs review)
-- CD-001: Build auth - max iterations reached (30/30). Checkpoint saved.
-
-## Total: 2 completed, 1 paused. ~$5.30 API cost.
-```
+All unchanged from v4.1. See previous version for full details.
 
 ---
 
-## Module 6: ASSISTANT - Dashboard & Goal-Setting Guide
-
-**Principle:** Show status. Don't interrogate. User comes for overview, not questions.
+## Module 6: ASSISTANT — Dashboard & Goal-Setting Guide
 
 ### Modes
 
-| Trigger | Behavior |
-|---------|----------|
-| "assistant" / "project overview" | Full dashboard. No questions. |
-| "what's next" / "what should I do" | Prioritized action list. |
-| "review <project>" | Deep dive: plan quality, task status, goal alignment. |
-| "review plans" | Scan ALL plans. Flag weak plans. Quality report. |
-| "overnight report" | Show latest overnight run summary. |
-| "iterate <project>" | Full cycle: status -> gaps -> next task -> offer draft. |
+| Trigger | strategist behavior | executor behavior |
+|---------|--------------------|--------------------|
+| "assistant" / "project overview" | Full dashboard + analysis hints | Execution status dashboard |
+| "what's next" / "what should I do" | Suggested analyses and plans to review | Prioritized task execution list |
+| "review <project>" | Deep analysis (Module 1 analyze) | Read-only quick review |
+| "review plans" | Full plan quality audit | Quick plan check |
+| "overnight report" | N/A | Show latest overnight summary |
+| "iterate <project>" | Propose direction + draft new tasks | Execute next ready task |
+
+### strategist-mode dashboard
+
+```
+# Plan Manager — strategist
+
+## 项目分析
+| 项目 | 目标 | 计划质量 | 待分析 | 建议 |
+|------|------|:------:|:----:|------|
+| PlanSkill | Build skill | ⚠️ | 是 | 检查plan.md |
+| ExophMetry | 未设定 | — | 是 | 需讨论目标 |
+
+## 待审查计划 (3)
+- CDMSystem: 无计划
+- PlanSkill: plan.md 目标模糊
+- ExophMetry: 无项目目标
+
+## 建议行动
+1. analyze PlanSkill → 审查代码和计划
+2. discuss direction for ExophMetry → 明确研究方向
+```
+
+### executor-mode dashboard
+
+```
+# Plan Manager — executor
+
+## 执行中 (1/2)
+| 项目 | 任务 | 步骤 | 迭代 | 速度 |
+|------|------|------|------|------|
+| PlanSkill | PS-001 | 3/5 | 4 | progressing |
+
+## 就绪队列
+| # | 项目 | 任务 | 优先级 |
+|---|------|------|:------:|
+| 1 | ExophMetry | EX-001 | P1 |
+
+## 需要关注
+- PlanSkill/PS-003 — 计划待审查
+```
 
 ---
 
@@ -544,12 +515,12 @@ Session: 03:15 - 05:30 (2h 15m)
 
 | File | Purpose |
 |------|---------|
-| `~/.claude/plan-manager/config.json` | Root path, parallelism, autonomy, max_iterations, overnight |
+| `~/.claude/plan-manager/config.json` | Root path, role, parallelism, autonomy, max_iterations, overnight, language |
 | `<root>/project/<proj>/.project` | Project metadata + goal |
 | `<root>/project/<proj>/tasks/<task>/.task` | Task state machine |
-| `<root>/project/<proj>/tasks/<task>/plan.md` | AI-drafted, user-reviewed plan (completion promise) |
+| `<root>/project/<proj>/tasks/<task>/plan.md` | AI-drafted, user-reviewed plan |
 | `<root>/project/<proj>/tasks/<task>/checkpoints/` | Auto-saved state + iterations.log |
-| `<root>/STATE.json` | Global execution state, velocity tracking |
+| `<root>/STATE.json` | Global execution state |
 | `<root>/OVERNIGHT-REPORT.md` | Post-overnight summary |
 | `<root>/DOCMAP.md` | Document index |
 
