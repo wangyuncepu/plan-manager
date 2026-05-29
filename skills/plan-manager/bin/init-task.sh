@@ -1,52 +1,45 @@
 #!/usr/bin/env bash
-# Initialize a new task in a project.
-# Usage: bash init-task.sh <root> <project-slug> <task-title>
+# Initialize a task scaffold under an existing project
+# Usage: init-task.sh <root> <project> <title>
 set -euo pipefail
 
-ROOT="${1:?Usage: init-task.sh <root> <project-slug> <task-title>}"
-PROJ="${2:?Usage: init-task.sh <root> <project-slug> <task-title>}"
-TITLE="${3:?Usage: init-task.sh <root> <project-slug> <task-title>}"
-SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//' | cut -c1-40)
+ROOT="${1:?Usage: init-task.sh <root> <project> <title>}"
+PROJECT="${2:?Usage: init-task.sh <root> <project> <title>}"
+TITLE="${3:?Usage: init-task.sh <root> <project> <title>}"
+TODAY=$(date +%Y-%m-%d)
 
-PROJ_DIR="$ROOT/project/$PROJ"
-
+PROJ_DIR="$ROOT/project/$PROJECT"
 if [ ! -d "$PROJ_DIR" ]; then
-  echo "Project '$PROJ' not found at $PROJ_DIR"
+  echo "Error: project directory $PROJ_DIR does not exist"
   exit 1
 fi
 
-# Determine next task number
-N=$(ls -1d "$PROJ_DIR/tasks/"*/ 2>/dev/null | wc -l)
-N=$((N + 1))
-TASK_ID=$(echo "$PROJ" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]//g' | cut -c1-4)-$(printf "%03d" $N)
+# Generate slug
+SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | tr -s '-' | sed 's/^-//;s/-$//')
+# Auto-assign task ID
+PREFIX=$(echo "$PROJECT" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]//g' | head -c3)
+LAST_NUM=$(find "$PROJ_DIR/tasks" -name ".task" -exec grep "^id:" {} \; 2>/dev/null | sed "s/id: $PREFIX-//" | sort -n | tail -1)
+NEXT_NUM=$(printf "%03d" $(( ${LAST_NUM:-0} + 1 )))
 TASK_DIR="$PROJ_DIR/tasks/$SLUG"
 
-if [ -d "$TASK_DIR" ]; then
-  echo "Task '$SLUG' already exists at $TASK_DIR"
-  exit 1
-fi
-
-mkdir -p "$TASK_DIR"
+mkdir -p "$TASK_DIR/checkpoints"
 
 cat > "$TASK_DIR/.task" << EOF
-id: $TASK_ID
-slug: $SLUG
+id: $PREFIX-$NEXT_NUM
 title: $TITLE
-project: $PROJ
+project: $PROJECT
 status: pending
-priority: P2
-order: $N
-created: $(date +%Y-%m-%d)
-deadline: ""
-completed: ""
+priority: P1
+order: $((NEXT_NUM + 0))
+created: $TODAY
+deadline:
+completed:
 depends_on: []
 depends_on_cross: []
 description: |
-  TODO: describe this task
-notes: ""
-plan_file: ""
+notes: |
+plan_file:
+max_iterations: 0
 EOF
 
-echo "Task '$TASK_ID': '$TITLE' created in project '$PROJ'"
-echo "Directory: $TASK_DIR"
-echo "Next: make plan for $TASK_ID"
+echo "Task $PREFIX-$NEXT_NUM '$TITLE' created at $TASK_DIR"

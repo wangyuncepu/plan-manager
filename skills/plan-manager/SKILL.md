@@ -189,6 +189,10 @@ If active executor tasks exist when switching to strategist: warn, checkpoint al
 - Auto-continue: when one task completes, pick next ready task
 - Handle minor problems internally (retry, course-correct)
 - Track progress velocity; self-detect stalls and recover
+- **CRITICAL BOUNDARY: AI never creates files, tasks, or plans without explicit user request.**
+  "Identify actions" = propose them for user approval, not auto-create.
+  "Auto-continue" applies ONLY in executor mode with already-approved plans.
+  In strategist mode: propose changes, never execute without user confirmation.
 
 ## File Isolation (CRITICAL)
 
@@ -212,7 +216,7 @@ project/CDMSystem/
 | Write/edit within own task dir | N/A | Yes |
 | Write .project | Yes (goal, desc, notes) | Never |
 | Write new plan.md / .task | Yes | Only for non-executing tasks |
-| Write other project files | Yes (analysis only) | Never |
+| Write other project files | Never | Never |
 | Write STATE.json | No | Yes (Module 4) |
 
 ---
@@ -386,6 +390,9 @@ Per-project table with status, plan existence, priority.
 1. List projects if not specified. 2. Ask: title, priority, description, max_iterations (optional).
 3. Auto-assign ID, slug, order. 4. Create `.task`. 5. Report created.
 
+> **Only create tasks on explicit user request** ("add task", "create task", "new task").
+> Do NOT create tasks from analysis suggestions unless user explicitly confirms.
+
 ---
 
 ## Module 3: PLAN — AI Drafts, User Reviews
@@ -440,19 +447,57 @@ AI validates all plans. In strategist mode: full deep review. In executor mode: 
 
 If in strategist mode: "Cannot execute in strategist mode. Switch to executor first: 'switch to executor'."
 
-Otherwise: same as v4.1 — compute execution plan, set tasks `in_progress`, begin executing.
+Otherwise: compute execution plan, set tasks `in_progress`, update STATE.json, begin executing.
 
-### Execution loop, iteration log, completion promise, crash recovery, auto-continue, max-iteration safety, overnight mode, STATE.json
+### Execution loop
 
-All unchanged from v4.1. See previous version for full details.
+1. Read plan.md → find next unchecked step
+2. Execute step (invoke other skills as needed). All Write/Edit ops target ONLY `<own-task-dir>/`
+3. Check step verification → mark [x] or retry (max 3)
+4. Write iteration log to `<task-dir>/checkpoints/iterations.log`
+5. Auto-validate: run tests/lint if applicable (PASS→continue, FAIL→fix+retry max 3)
+6. Check progress velocity (Module 5): progressing→continue, stalled→pause
+7. All steps done + all success criteria met → mark completed, update STATE.json, auto-pick next ready task
+8. Iteration count >= max_iterations → pause task, save checkpoint
+
+### Crash recovery, auto-continue, overnight mode, STATE.json
+
+Core: orphaned `in_progress` tasks auto-detected, resume from last checkpoint.
 
 ---
 
 ## Module 5: CHECK — Progress Velocity & Crash Recovery
 
-### Progress velocity tracking, MAJOR/MINOR problems, crash recovery, overnight report
+### Progress velocity
 
-All unchanged from v4.1. See previous version for full details.
+| Velocity | Criteria | Action |
+|----------|----------|--------|
+| progressing | Steps advancing, files changing | Continue |
+| slow | Same step 3+ iterations, small changes | Checkpoint, continue |
+| stalling | Same action 2x same file, no improvement | Self-correct |
+| stalled | Same action 3x same file, zero progress | PAUSE |
+
+### MAJOR problems → PAUSE + checkpoint
+
+| Problem | Action |
+|---------|--------|
+| Stalled (3x no progress) | Pause, save checkpoint, report |
+| Unreachable criteria (3 approaches fail) | Pause, suggest plan revision |
+| Max iterations reached | Pause, flag for user review |
+
+### MINOR problems → AI handles internally
+
+- Step failed (1st try): retry max 3
+- Test/lint failure: fix + re-run, 3x same → escalate
+- Slow but progressing: checkpoint, continue
+
+### Crash recovery
+
+On startup: check STATE.json for orphaned `in_progress` tasks → offer resume from checkpoint.
+
+### Overnight report
+
+After overnight mode ends: summary to `<root>/OVERNIGHT-REPORT.md` (completed, paused, costs).
 
 ---
 
@@ -477,17 +522,17 @@ All unchanged from v4.1. See previous version for full details.
 ## 项目分析
 | 项目 | 目标 | 计划质量 | 待分析 | 建议 |
 |------|------|:------:|:----:|------|
-| PlanSkill | Build skill | ⚠️ | 是 | 检查plan.md |
-| ExophMetry | 未设定 | — | 是 | 需讨论目标 |
+| Xzs_app-dev | 小红书运营软件 | ✓ | 否 | 创建P0任务 |
+| VIP | 未设定 | — | 是 | 注册项目 |
+| ExophMetry | 未设定 | — | 是 | 讨论目标 |
 
-## 待审查计划 (3)
-- CDMSystem: 无计划
-- PlanSkill: plan.md 目标模糊
-- ExophMetry: 无项目目标
+## 待审查计划 (1)
+- VIP: 无 .project 文件，需注册
 
 ## 建议行动
-1. analyze PlanSkill → 审查代码和计划
-2. discuss direction for ExophMetry → 明确研究方向
+1. analyze VIP → 了解未注册项目内容
+2. create project VIP → 注册项目并设定目标
+3. add task to Xzs_app-dev → 创建 V1.2.0 P0 开发任务
 ```
 
 ### executor-mode dashboard

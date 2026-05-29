@@ -20,7 +20,7 @@ ln -s "$SKILL_PATH" "$TARGET"
 chmod +x "$SKILL_PATH/bin/"*.sh 2>/dev/null || true
 
 echo ""
-echo "plan-manager v3.0.0 installed."
+echo "plan-manager v4.2.0 installed."
 echo "  Symlink: $TARGET → $SKILL_PATH"
 echo ""
 echo "Trigger phrases: 'assistant', 'add task to <project>', 'execute N projects'"

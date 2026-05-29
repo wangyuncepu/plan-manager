@@ -1,85 +1,44 @@
 #!/usr/bin/env bash
-# Generate DOCMAP.md — scan project for documentation files and produce index.
-# Usage: bash update-docmap.sh [project-root]
-
+# Regenerate DOCMAP.md index from all projects and tasks
+# Usage: update-docmap.sh <root>
 set -euo pipefail
-ROOT="${1:-.}"
-cd "$ROOT"
 
-OUT="DOCMAP.md"
-NOW=$(date "+%Y-%m-%d %H:%M")
+ROOT="${1:?Usage: update-docmap.sh <root>}"
+OUT="$ROOT/DOCMAP.md"
 
-echo "# Document Directory" > "$OUT"
-echo "" >> "$OUT"
-echo "> Auto-generated: $NOW. Rebuild: \"update doc index\"" >> "$OUT"
-echo "" >> "$OUT"
+{
+  echo "# Document Map"
+  echo ""
+  echo "Generated: $(date -Iseconds)"
+  echo ""
+  echo "## Projects"
+  echo ""
+  echo "| Project | Status | Goal | Tasks |"
+  echo "|---------|--------|------|-------|"
 
-# Collect doc files
-mapfile -t FILES < <(find . -type f \( -name "*.md" -o -name "*.pdf" -o -name "*.pptx" -o -name "*.txt" -o -name "*.rst" \) ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/.claude/skills/*" ! -path "*/DOCMAP.md" ! -path "*/PLANS.md" 2>/dev/null | sort)
+  for proj_dir in "$ROOT"/project/*/; do
+    name=$(basename "$proj_dir")
+    proj_file="$proj_dir.project"
+    if [ -f "$proj_file" ]; then
+      status=$(grep "^status:" "$proj_file" | sed 's/status: //')
+      goal=$(grep "^goal:" "$proj_file" | head -1 | sed 's/goal: //')
+      task_count=$(find "$proj_dir" -name ".task" 2>/dev/null | wc -l)
+      echo "| $name | $status | ${goal:-\"\"} | $task_count |"
+    else
+      echo "| $name | unregistered | — | 0 |"
+    fi
+  done
 
-# Build category map
-declare -A CATEGORIES
-for f in "${FILES[@]}"; do
-  dir=$(dirname "$f")
-  # Extract top-level category
-  if [[ "$dir" == "." ]]; then
-    cat="Root"
-  else
-    cat=$(echo "$dir" | cut -d'/' -f2)
-    # Capitalize first letter
-    cat="${cat^}"
-  fi
-  CATEGORIES["$cat"]+="$f"$'\n'
-done
+  echo ""
+  echo "## Tasks"
+  echo ""
+  for task_file in $(find "$ROOT"/project -name ".task" 2>/dev/null | sort); do
+    id=$(grep "^id:" "$task_file" | sed 's/id: //')
+    title=$(grep "^title:" "$task_file" | sed 's/title: //')
+    status=$(grep "^status:" "$task_file" | sed 's/status: //')
+    project=$(grep "^project:" "$task_file" | sed 's/project: //')
+    echo "- **$id** [$status] $title ($project)"
+  done
+} > "$OUT"
 
-# Count
-TOTAL=${#FILES[@]}
-echo "## Summary" >> "$OUT"
-echo "" >> "$OUT"
-echo "- **$TOTAL** documents across **${#CATEGORIES[@]}** categories" >> "$OUT"
-echo "" >> "$OUT"
-
-echo "## By Category" >> "$OUT"
-echo "" >> "$OUT"
-
-for cat in $(echo "${!CATEGORIES[@]}" | tr ' ' '\n' | sort); do
-  echo "### $cat" >> "$OUT"
-  echo "" >> "$OUT"
-  echo "| File | Title | Modified |" >> "$OUT"
-  echo "|------|-------|----------|" >> "$OUT"
-
-  while IFS= read -r f; do
-    [[ -z "$f" ]] && continue
-    # Get title: first # heading
-    title=$(head -50 "$f" 2>/dev/null | grep -m1 '^# ' | sed 's/^# //' || echo "")
-    [[ -z "$title" ]] && title=$(basename "$f" | sed 's/\.[^.]*$//')
-    # Get git last modified
-    mdate=$(git log -1 --format="%ad" --date=short -- "$f" 2>/dev/null || date -r "$f" "+%Y-%m-%d" 2>/dev/null || echo "-")
-    echo "| [$(basename "$f")]($f) | $title | $mdate |" >> "$OUT"
-  done <<< "${CATEGORIES[$cat]}"
-
-  echo "" >> "$OUT"
-done
-
-echo "## Flat File Index" >> "$OUT"
-echo "" >> "$OUT"
-echo "| Path | Title | Category | Modified |" >> "$OUT"
-echo "|------|-------|----------|----------|" >> "$OUT"
-
-for f in "${FILES[@]}"; do
-  dir=$(dirname "$f")
-  if [[ "$dir" == "." ]]; then
-    cat="Root"
-  else
-    cat=$(echo "$dir" | cut -d'/' -f2)
-    cat="${cat^}"
-  fi
-  title=$(head -50 "$f" 2>/dev/null | grep -m1 '^# ' | sed 's/^# //' || echo "")
-  [[ -z "$title" ]] && title=$(basename "$f" | sed 's/\.[^.]*$//')
-  mdate=$(git log -1 --format="%ad" --date=short -- "$f" 2>/dev/null || date -r "$f" "+%Y-%m-%d" 2>/dev/null || echo "-")
-  echo "| [$f]($f) | $title | $cat | $mdate |" >> "$OUT"
-done
-
-echo "" >> "$OUT"
-
-echo "DOCMAP.md generated: $TOTAL files, ${#CATEGORIES[@]} categories."
+echo "DOCMAP.md regenerated at $OUT"

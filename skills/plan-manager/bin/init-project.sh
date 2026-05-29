@@ -1,36 +1,35 @@
 #!/usr/bin/env bash
-# Initialize a new project in the plan-manager root.
-# Usage: bash init-project.sh <root> <project-name>
+# Initialize a plan-manager project scaffold
+# Usage: init-project.sh <root> <name>
 set -euo pipefail
 
-ROOT="${1:?Usage: init-project.sh <root> <project-name>}"
-NAME="${2:?Usage: init-project.sh <root> <project-name>}"
-SLUG=$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
-
-PROJ_DIR="$ROOT/project/$SLUG"
-
-if [ -d "$PROJ_DIR" ]; then
-  echo "Project '$SLUG' already exists at $PROJ_DIR"
-  exit 1
-fi
+ROOT="${1:?Usage: init-project.sh <root> <name>}"
+NAME="${2:?Usage: init-project.sh <root> <name>}"
+SLUG=$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+TODAY=$(date +%Y-%m-%d)
+PROJ_DIR="$ROOT/project/$NAME"
 
 mkdir -p "$PROJ_DIR/tasks"
 
-cat > "$PROJ_DIR/.project" << EOF
+# .project
+if [ ! -f "$PROJ_DIR/.project" ]; then
+  cat > "$PROJ_DIR/.project" << EOF
 name: $NAME
 slug: $SLUG
 status: active
-priority: P2
-created: $(date +%Y-%m-%d)
+priority: P1
+created: $TODAY
+goal:
 description: |
-  TODO: describe this project
-notes: ""
+notes: |
 EOF
+  echo "Created $PROJ_DIR/.project"
+fi
 
-cat > "$PROJ_DIR/README.md" << EOF
-# $NAME
+# README.md
+if [ ! -f "$PROJ_DIR/README.md" ]; then
+  echo "# $NAME" > "$PROJ_DIR/README.md"
+  echo "Created $PROJ_DIR/README.md"
+fi
 
-TODO: Project description and goals.
-EOF
-
-echo "Project '$NAME' ($SLUG) created at $PROJ_DIR"
+echo "Project '$NAME' scaffolded at $PROJ_DIR"
