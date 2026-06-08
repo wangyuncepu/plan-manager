@@ -330,8 +330,13 @@ Table with project name, status, goal, tasks (active/total), priority.
 
 ### Create project ("create project <name>")
 
-1. Slugify name. 2. Ask user for the goal. 3. Write `.project`.
-4. Report created.
+1. Slugify name.
+2. **Study existing content:** Read the project directory to understand what's already there (README, source files, docs).
+3. **Ask user for the initial goal.** Get a rough goal statement from the user.
+4. **Clarify goal with office-hours:** Invoke the `office-hours` skill (gstack) first. Office-hours uses YC-style forcing questions (demand reality, status quo, narrowest wedge, future-fit) to deeply explore the idea before any planning begins. This surfaces what the project truly needs to be.
+5. **Refine with autoplan:** Invoke the `autoplan` skill (gstack) next. Autoplan runs CEO/design/eng/DX four-perspective review on the office-hours output, systematically locking in the ultimate goal and surfacing blind spots.
+6. Write `.project` with the fully clarified goal (results from steps 4-5).
+7. Report: "Project `<name>` created. Goal: `<clarified goal>`"
 
 ### Show project ("show project <name>")
 
