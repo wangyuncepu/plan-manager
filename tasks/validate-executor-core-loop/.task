@@ -1,0 +1,38 @@
+id: PLS-001
+title: 验证 executor 端到端执行链路
+project: PlanSkill
+status: completed
+completed: 2026-06-08
+priority: P0
+order: 1
+created: 2026-06-08
+deadline:
+completed:
+depends_on: []
+depends_on_cross: []
+description: |
+  用 plan-manager 的 executor 模式跑通一次完整的 Core Loop：
+  创建项目 → 加任务 → 制定计划 → 执行 → 标记完成。
+
+  验证内容：
+  1. executor 模式的 8 步执行循环是否按预期工作
+  2. iterations.log 是否正确写入每次迭代
+  3. STATE.json 是否正确反映执行状态变化
+  4. auto-continue 逻辑是否触发（任务完成后自动选下一个）
+
+  记录：
+  - 所有卡点：skill 指令模糊导致 AI 行为错误的地方
+  - 流程断裂：期望行为 vs 实际行为的差距
+  - 输出：问题清单 + 修复建议
+
+  验收标准：
+  - [ ] 一个测试项目从创建到任务完成的完整链路跑通
+  - [ ] iterations.log 有完整的迭代记录
+  - [ ] STATE.json 状态转换正确
+  - [ ] 问题清单已记录
+notes: |
+  PlanSkill P0 任务。Core Loop First 方向的第一步。
+  这是 plan-manager 首次用 executor 模式执行真实任务——吃自己的狗粮。
+  设计文档: ~/.gstack/projects/wangyuncepu-plan-manager/wangyu-main-design-20260608-103101.md
+plan_file:
+max_iterations: 5

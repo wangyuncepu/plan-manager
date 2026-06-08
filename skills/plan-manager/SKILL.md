@@ -216,8 +216,10 @@ project/CDMSystem/
 | Write/edit within own task dir | N/A | Yes |
 | Write .project | Yes (goal, desc, notes) | Never |
 | Write new plan.md / .task | Yes | Only for non-executing tasks |
-| Write other project files | Never | Never |
+| Write other project files | Never | Only when plan step explicitly lists it |
 | Write STATE.json | No | Yes (Module 4) |
+
+> **Plan-step exception:** When a plan step explicitly requires creating or modifying files outside the task directory (e.g., "create a test project under project/"), the executor MAY write to those locations ONLY for that step. All other file isolation rules remain in force.
 
 ---
 
@@ -454,16 +456,22 @@ If in strategist mode: "Cannot execute in strategist mode. Switch to executor fi
 
 Otherwise: compute execution plan, set tasks `in_progress`, update STATE.json, begin executing.
 
+**auto-continue behavior:**
+- `execute <N> projects` with N=1 (or "execute", "start"): Complete current task, then STOP. Do not auto-start the next ready task.
+- `execute <N> projects` with N>1 or "auto": Complete current task, then auto-pick next ready task from same or other projects. Continue until N tasks done or no ready tasks remain.
+- "overnight": Same as "auto" but with doubled max_iterations and no user prompts.
+
 ### Execution loop
 
 1. Read plan.md → find next unchecked step
-2. Execute step (invoke other skills as needed). All Write/Edit ops target ONLY `<own-task-dir>/`
+2. Execute step (invoke other skills as needed). All Write/Edit ops target ONLY `<own-task-dir>/` (exception: plan-step explicitly authorizes cross-directory writes)
 3. Check step verification → mark [x] or retry (max 3)
 4. Write iteration log to `<task-dir>/checkpoints/iterations.log`
-5. Auto-validate: run tests/lint if applicable (PASS→continue, FAIL→fix+retry max 3)
-6. Check progress velocity (Module 5): progressing→continue, stalled→pause
-7. All steps done + all success criteria met → mark completed, update STATE.json, auto-pick next ready task
-8. Iteration count >= max_iterations → pause task, save checkpoint
+5. Update STATE.json: increment `iterations`, set `current_step`, set `last_action`, set `velocity`
+6. Auto-validate: run tests/lint if applicable (PASS→continue, FAIL→fix+retry max 3)
+7. Check progress velocity (Module 5): progressing→continue, stalled→pause
+8. All steps done + all success criteria met → mark task completed in `.task`, update STATE.json, auto-pick next ready task (see auto-continue rules)
+9. Iteration count >= max_iterations → pause task, save checkpoint, update `.task` to `blocked`
 
 ### Crash recovery, auto-continue, overnight mode, STATE.json
 
@@ -490,6 +498,22 @@ Core: orphaned `in_progress` tasks auto-detected, resume from last checkpoint.
 | Unreachable criteria (3 approaches fail) | Pause, suggest plan revision |
 | Max iterations reached | Pause, flag for user review |
 
+### Checkpoint format
+
+When saving a checkpoint, write `checkpoints/snapshot.md`:
+```markdown
+# Checkpoint — <timestamp>
+Task: <TASK-ID> | Iteration: <N>/<max>
+Last completed step: <N>
+Plan step status:
+- [x] step 1
+- [ ] step 2
+...
+Last action: <what was done>
+Last result: <OK/FAIL>
+```
+This is the minimum format. crash recovery reads `snapshot.md` to resume from the first unchecked step.
+
 ### MINOR problems → AI handles internally
 
 - Step failed (1st try): retry max 3
@@ -498,7 +522,10 @@ Core: orphaned `in_progress` tasks auto-detected, resume from last checkpoint.
 
 ### Crash recovery
 
-On startup: check STATE.json for orphaned `in_progress` tasks → offer resume from checkpoint.
+On startup: check STATE.json for orphaned `in_progress` tasks → offer resume.
+1. If `checkpoints/snapshot.md` exists → restore from checkpoint (resume from first unchecked step).
+2. If no checkpoint exists → fallback: read `plan.md`, find first unchecked step, restart from there.
+3. If no plan.md either → mark task `blocked`, reason: "session-ended-no-plan".
 
 ### Overnight report
 
