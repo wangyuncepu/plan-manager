@@ -8,14 +8,15 @@ PANEL="$SCRIPT_DIR/panel-manage.py"
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
-python3 -m py_compile "$PANEL" "$SCRIPT_DIR/config-panel.py" "$SCRIPT_DIR/_common.py"
+python3 -m py_compile "$PANEL" "$SCRIPT_DIR/config-panel.py" "$SCRIPT_DIR/help-panel.py" "$SCRIPT_DIR/_common.py"
 
 "$PANEL" list >"$TMP"
-for name in config overview projects tasks ready-queue remote github-status trash panels; do
+for name in help config overview projects tasks ready-queue remote github-status trash panels; do
   grep -q "| $name |" "$TMP" || { echo "missing fixed panel: $name"; exit 1; }
 done
 
 "$PANEL" run config | grep -q 'Core Config'
 "$PANEL" run trash | grep -q 'Type'
+"$PANEL" run help | grep -q '快速流程'
 
 echo "panel registry ok"

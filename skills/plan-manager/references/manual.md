@@ -2,6 +2,49 @@
 
 plan-manager is a panel-centered project orchestration skill. It manages projects, tasks, plans, execution state, GitHub remotes, and trash through scripts.
 
+## Start here
+
+Unsure what to do? Open the help panel — it adapts to the current role and lists the quick flow + every command:
+
+```bash
+~/.claude/skills/plan-manager/scripts/panel-manage.py run help
+# or: /plan-manager help
+```
+
+### Quick start — strategist (plan)
+
+```text
+1. /plan-manager                 see global overview
+2. analyze <project>             study state, gaps, direction
+3. create project <name>         project-manage.py create ... (dry-run → --apply)
+4. add task to <project>         task-manage.py create ...
+5. make plan for <ID>            draft plan.md → you approve
+6. switch to executor            switch role to run work
+```
+
+### Quick start — executor (run)
+
+```text
+1. /plan-manager ready-queue     view ready tasks
+2. switch to executor
+3. execute / auto                run ready tasks
+4. continue                      resume from checkpoint
+```
+
+### Where do I start? (scenario → command)
+
+| Goal | Command |
+|------|---------|
+| See state | `/plan-manager` or `panel-manage.py run overview` |
+| New project | `project-manage.py create --root <root> --name <name> [--apply]` |
+| New task | `task-manage.py create --root <root> --project <p> --title <t> [--apply]` |
+| Run tasks | `switch to executor` → `execute` / `auto` |
+| Resume | `continue` |
+| Undo a delete | `trash-manage.py list` → `restore <name> --apply` |
+| Purge trash | `trash-manage.py purge <name> --force --apply` |
+| Configure | `configure-plan-manager.sh ...` (or `--show`) |
+| Save a panel | `panel-manage.py add <name> ... --apply` |
+
 ## Mental model
 
 Use panels first:
@@ -83,6 +126,7 @@ Current fixed panels:
 
 | Panel | Script | Use |
 |---|---|---|
+| `help` | `help-panel.py` | Role-aware quick flow + command index |
 | `config` | `config-panel.py` | Full configuration panel |
 | `overview` | `project-overview.py` | Global project overview with suggestions |
 | `projects` | `project-manage.py list` | Lightweight project CRUD list |

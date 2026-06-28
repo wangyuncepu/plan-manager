@@ -158,16 +158,6 @@ def session_cell(script_dir: Path, project: str, root: Path, lang: str) -> str:
     return f"{rel}, {count}{suffix}"
 
 
-def plan_quality(project_dir: Path) -> str:
-    plans = list(project_dir.glob("tasks/*/plan.md"))
-    tasks = list(project_dir.glob("tasks/*/.task"))
-    if not tasks:
-        return "—"
-    if len(plans) == len(tasks):
-        return "✓"
-    return f"{len(plans)}/{len(tasks)}"
-
-
 def project_summary(project_dir: Path, script_dir: Path, root: Path, lang: str, remote: dict | None = None) -> dict:
     name = project_dir.name
     project_file = project_dir / ".project"
@@ -184,7 +174,6 @@ def project_summary(project_dir: Path, script_dir: Path, root: Path, lang: str, 
         "name": name,
         "status": status,
         "goal": goal,
-        "plan_quality": plan_quality(project_dir),
         "tasks": task_summary(counts, lang),
         "session": session_cell(script_dir, name, root, lang),
         "remote": remote_cell(remote),
@@ -216,11 +205,11 @@ def print_project_overview(root: Path, script_dir: Path, lang: str, remotes: dic
     if has_remote:
         header += " Remote Status |"
         sep += "---------------|"
-    header += " 目标 | 计划质量 | 任务(执行/准备/完成/总) | 最近会话 |" if lang == "zh" else " Goal | Plan | Tasks(active/ready/done/total) | Last Session |"
+    header += " 目标 | 任务(执行/准备/完成/总) | 最近会话 |" if lang == "zh" else " Goal | Tasks(active/ready/done/total) | Last Session |"
     if lang == "zh":
-        sep += "------|:------:|------|---------|"
+        sep += "------|------|---------|"
     else:
-        sep += "------|:----:|-------|--------------|"
+        sep += "------|-------|--------------|"
     header += " 建议 |" if lang == "zh" else " Suggest |"
     sep += "------|" if lang == "zh" else "---------|"
     print(header)
@@ -233,8 +222,8 @@ def print_project_overview(root: Path, script_dir: Path, lang: str, remotes: dic
             cell = "github_unknown" if remote_unknown else summary["remote"]
             row += f" {cell} |"
         row += (
-            f" {summary['goal']} | {summary['plan_quality']} | "
-            f"{summary['tasks']} | {summary['session']} | {summary['suggest']} |"
+            f" {summary['goal']} | {summary['tasks']} | "
+            f"{summary['session']} | {summary['suggest']} |"
         )
         print(row)
     return summaries
@@ -265,8 +254,11 @@ def suggested_actions(summaries: list[dict], lang: str) -> list[str]:
             actions.append(action)
 
     for summary in summaries:
-        if summary["status"] != "unregistered" and summary["plan_quality"] != "✓":
-            action = f"review plans for {summary['name']} → 修复计划质量" if lang == "zh" else f"review plans for {summary['name']} → fix plan quality"
+        counts = summary.get("counts", {})
+        total = counts.get("total", 0)
+        planned = counts.get("ready", 0) + counts.get("active", 0) + counts.get("completed", 0)
+        if summary["status"] != "unregistered" and total > 0 and planned == 0:
+            action = f"review plans for {summary['name']} → 任务缺已批准计划" if lang == "zh" else f"review plans for {summary['name']} → tasks lack approved plans"
             actions.append(action)
 
     if not actions:
@@ -344,7 +336,6 @@ def print_project_panel(root: Path, script_dir: Path, project_dir: Path, lang: s
         ("Name", summary["name"]),
         ("Status", summary["status"]),
         ("Goal", summary["goal"]),
-        ("Plan Quality", summary["plan_quality"]),
         ("Tasks(active/ready/done/total)", summary["tasks"]),
         ("Last Session", summary["session"]),
         ("Path", str(project_dir)),

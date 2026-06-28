@@ -24,6 +24,12 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_REGISTRY = {
     "version": "1.0.0",
     "fixed": {
+        "help": {
+            "title": "Help Panel",
+            "script": "help-panel.py",
+            "args": ["--lang", "$LANG"],
+            "description": "命令索引 + 引导流程",
+        },
         "config": {
             "title": "Config Panel",
             "script": "config-panel.py",
