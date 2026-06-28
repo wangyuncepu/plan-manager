@@ -1,7 +1,7 @@
 ---
 name: plan-manager
 preamble-tier: 3
-version: 4.3.0
+version: 4.4.0
 description: |
   Dual-role autonomous project orchestration system.
   strategist — analyze projects, review plans, discuss goals and direction.
@@ -302,7 +302,7 @@ project/CDMSystem/
 **STATE.json schema:**
 ```json
 {
-  "version": "4.3.0",
+  "version": "4.4.0",
   "updated": "ISO-8601 timestamp",
   "mode": "strategist | executor",
   "active_tasks": ["TASK-ID"],
@@ -329,6 +329,39 @@ cancelled  (no plan) blocked   blocked
 ```
 
 ---
+
+## INTERACTION MODEL (read first — applies to every reply)
+
+The user interacts ONLY through natural-language conversation. The AI runs ALL scripts internally on the user's behalf. The user never needs to see, type, or understand a script command.
+
+- NEVER tell the user to run a script, paste a CLI command, or learn flags like `--apply`. Translate the user's plain-language intent into the right script call yourself and run it.
+- When you do run scripts, the user does not need a play-by-play. Show the resulting panel/result and a short plain-language summary. Mention a command only if the user explicitly asks "what command did you run".
+- Guidance/help content shown to the user must be phrased as "what to say to me", not "what to run". (The `help` panel already follows this.)
+- Safety confirmations stay conversational: preview the effect in plain words, ask yes/no, then apply. Do not surface dry-run/`--apply` mechanics as something the user manages.
+
+## FORCED PANEL ROUTING (highest priority — act before reading further)
+
+When this skill is invoked with `ARGUMENTS` (the text after `/plan-manager`), and the **first token** of `ARGUMENTS` matches a fixed/saved panel name, you MUST immediately run that panel's script as your FIRST action — before any explanation, summary, or analysis.
+
+| First token of ARGUMENTS | Required first action (run, then show output) |
+|---|---|
+| `help` | `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py run help` |
+| `config` | `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py run config` |
+| `overview` | `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py run overview` |
+| `projects` | `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py run projects` |
+| `tasks` | `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py run tasks` |
+| `ready-queue` | `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py run ready-queue` |
+| `remote` | `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py run remote` |
+| `github-status` | `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py run github-status` |
+| `trash` | `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py run trash` |
+| `panels` | `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py list` |
+| `panel <name>` | `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py run <name>` |
+
+Rules:
+- Running the script is MANDATORY, not optional. Do NOT answer a panel request with prose alone — the panel's value is the script output.
+- Run the script FIRST. Add interpretation only AFTER the output, and keep it short.
+- **Reprint the panel output into your chat reply as rendered Markdown — NOT inside a fenced code block.** The panel is Markdown (headers, tables); emitting it raw (no ``` fence) lets the terminal render tables/headers as rich text. A code fence would show raw monospace text instead. Do NOT leave the panel only in the collapsed tool-result block. The reply must contain the full panel as live Markdown, then optional short interpretation.
+- A bare invocation (no `ARGUMENTS`) follows "Phase 0 → On every invocation" routing (project panel if cwd is inside a project, else `overview`). Same reprint rule applies to every panel.
 
 ## Panel-first principle (read before any operation)
 
@@ -711,7 +744,7 @@ Panel types:
 - saved panels: user-defined, persisted in `~/.claude/plan-manager/panels.json`.
 - temporary panels: one-off generated panels via `panel-manage.py generate`.
 
-Routing:
+Routing (these are MANDATORY actions — see "FORCED PANEL ROUTING" at top; run the script first, prose after):
 | Invocation | Behavior |
 |------------|----------|
 | `/plan-manager help` | Run fixed `help` panel (role-aware quick flow + command index) |

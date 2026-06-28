@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Help panel for plan-manager: command index + role-aware guided flows."""
+"""Help panel for plan-manager: conversational, role-aware guide.
+
+User-facing: lists what to SAY to the assistant in plain language.
+All scripts are run by the assistant internally — never shown as user commands.
+"""
 
 import argparse
 import json
 from pathlib import Path
 
 CONFIG_PATH = Path.home() / ".claude" / "plan-manager" / "config.json"
-SK = "${CLAUDE_SKILL_DIR}/scripts"
 
 
 def read_config() -> dict:
@@ -17,81 +20,70 @@ def read_config() -> dict:
         return {}
 
 
+# Each flow row: (what you say, what happens)
 STRATEGIST_FLOW = {
     "zh": [
-        "/plan-manager                 查看全局总览（panel: overview）",
-        "/plan-manager <project>       打开项目面板",
-        "analyze <project>             深入分析现状、缺口、方向",
-        "create project <name>         新建项目（脚本 dry-run → --apply）",
-        "add task to <project>         加任务",
-        "make plan for <ID>            起草计划 → 你审批",
-        "switch to executor            切到执行角色开始干活",
+        ("看看现状 / 总览", "全局项目总览面板"),
+        ("打开 <项目>", "该项目的详情面板"),
+        ("分析 <项目>", "深入分析现状、缺口、方向"),
+        ("新建项目 <名字>", "我帮你建项目并一起定目标"),
+        ("给 <项目> 加个任务", "我建任务、问清细节"),
+        ("给 <任务> 做计划", "我起草计划 → 你点头才执行"),
+        ("切到执行模式", "进入干活角色"),
     ],
     "en": [
-        "/plan-manager                 global overview (panel: overview)",
-        "/plan-manager <project>       open a project panel",
-        "analyze <project>             deep state/gap/direction analysis",
-        "create project <name>         new project (dry-run → --apply)",
-        "add task to <project>         add a task",
-        "make plan for <ID>            draft a plan → you approve",
-        "switch to executor            switch role to start working",
+        ("show overview", "global project overview panel"),
+        ("open <project>", "that project's detail panel"),
+        ("analyze <project>", "deep state / gap / direction analysis"),
+        ("create project <name>", "I create it and set the goal with you"),
+        ("add a task to <project>", "I create the task, ask for details"),
+        ("make a plan for <task>", "I draft a plan → you approve before run"),
+        ("switch to executor", "enter the working role"),
     ],
 }
 
 EXECUTOR_FLOW = {
     "zh": [
-        "/plan-manager ready-queue     看就绪队列",
-        "switch to executor            切到执行角色",
-        "execute / execute N projects  执行就绪任务",
-        "auto                          连续执行直到无就绪任务",
-        "continue / resume             崩溃/中断后断点续跑",
-        "complete <ID> / block <ID>    手动改任务状态（脚本）",
+        ("有哪些能执行的任务", "就绪队列"),
+        ("切到执行模式", "进入干活角色"),
+        ("开始执行 / 执行下一个", "跑就绪任务"),
+        ("一直跑 / 自动", "连续执行直到没有就绪任务"),
+        ("继续 / 接着上次", "断点续跑"),
+        ("把 <任务> 标记完成 / 阻塞", "改任务状态"),
     ],
     "en": [
-        "/plan-manager ready-queue     view ready queue",
-        "switch to executor            switch to executor role",
-        "execute / execute N projects  run ready tasks",
-        "auto                          run until no ready tasks remain",
-        "continue / resume             resume from checkpoint",
-        "complete <ID> / block <ID>    manual task state change (script)",
+        ("what can I run", "ready queue"),
+        ("switch to executor", "enter the working role"),
+        ("start / run next", "run ready tasks"),
+        ("keep going / auto", "run until no ready tasks remain"),
+        ("continue", "resume from checkpoint"),
+        ("mark <task> done / blocked", "change task state"),
     ],
 }
 
-PANELS = [
-    ("config", "配置看板", "config panel"),
-    ("overview", "全局项目总览", "global overview"),
-    ("projects", "项目元数据列表", "project metadata list"),
-    ("tasks", "全部任务", "all tasks"),
-    ("ready-queue", "可执行任务队列", "ready task queue"),
-    ("remote", "GitHub remote 验证", "GitHub remote verify"),
-    ("github-status", "GitHub 管理状态", "GitHub manage status"),
-    ("trash", "软删除项目/任务", "trashed projects/tasks"),
-    ("panels", "看板管理看板", "panel manager"),
-    ("help", "本帮助看板", "this help panel"),
-]
-
+# What you say -> what you get. No scripts shown.
 SCENARIOS = {
     "zh": [
-        ("看现状", "/plan-manager  或  panel-manage.py run overview"),
-        ("建项目", "project-manage.py create --root <root> --name <name> [--apply]"),
-        ("加任务", "task-manage.py create --root <root> --project <p> --title <t> [--apply]"),
-        ("执行任务", "switch to executor → execute / auto"),
-        ("断点续跑", "continue"),
-        ("找回误删", "trash-manage.py list → restore <name> --apply"),
-        ("永久清理", "trash-manage.py purge <name> --force --apply"),
-        ("改配置", "configure-plan-manager.sh ...  或  --show 查看"),
-        ("固化看板", "panel-manage.py add <name> --script ... --args ... --apply"),
+        ("看现状", "“总览” 或 “打开 <项目>”"),
+        ("建项目", "“新建项目 <名字>”"),
+        ("加任务", "“给 <项目> 加任务 <标题>”"),
+        ("执行任务", "“切到执行模式” → “开始执行”"),
+        ("断点续跑", "“继续”"),
+        ("找回误删", "“回收站有什么” → “恢复 <名字>”"),
+        ("永久清理", "“永久删除 <名字>”（我会再确认一次）"),
+        ("改配置", "“改成英文 / 切角色 / 看配置”"),
+        ("固化常用看板", "“把这个存成常用看板 <名字>”"),
     ],
     "en": [
-        ("See state", "/plan-manager  or  panel-manage.py run overview"),
-        ("New project", "project-manage.py create --root <root> --name <name> [--apply]"),
-        ("New task", "task-manage.py create --root <root> --project <p> --title <t> [--apply]"),
-        ("Run tasks", "switch to executor → execute / auto"),
-        ("Resume", "continue"),
-        ("Undo delete", "trash-manage.py list → restore <name> --apply"),
-        ("Purge", "trash-manage.py purge <name> --force --apply"),
-        ("Configure", "configure-plan-manager.sh ...  or  --show"),
-        ("Save a panel", "panel-manage.py add <name> --script ... --args ... --apply"),
+        ("See state", "\"overview\" or \"open <project>\""),
+        ("New project", "\"create project <name>\""),
+        ("New task", "\"add task <title> to <project>\""),
+        ("Run tasks", "\"switch to executor\" → \"start\""),
+        ("Resume", "\"continue\""),
+        ("Undo delete", "\"what's in trash\" → \"restore <name>\""),
+        ("Purge", "\"permanently delete <name>\" (I reconfirm)"),
+        ("Configure", "\"set language en / switch role / show config\""),
+        ("Save a panel", "\"save this as a panel called <name>\""),
     ],
 }
 
@@ -107,45 +99,43 @@ def main() -> int:
     zh = lang == "zh"
     print("# Plan Manager — Help")
     print()
-    print((f"当前角色: **{role}**" if zh else f"Current role: **{role}**"))
+    if zh:
+        print(f"当前角色: **{role}** ｜ 你只管用大白话跟我说想做什么,具体操作我来做。")
+    else:
+        print(f"Current role: **{role}** | Just tell me what you want in plain words — I handle the rest.")
     print()
 
     flows = [("strategist", STRATEGIST_FLOW), ("executor", EXECUTOR_FLOW)]
     flows.sort(key=lambda f: f[0] != role)  # active role first
 
-    head = "快速流程" if zh else "Quick flow"
+    head = "你可以说" if zh else "You can say"
+    col_say = "对我说" if zh else "Say"
+    col_do = "我会做" if zh else "I do"
     for name, flow in flows:
         marker = " ← 当前" if (zh and name == role) else (" ← current" if name == role else "")
-        print(f"## {head}: {name}{marker}")
-        for i, line in enumerate(flow[lang], 1):
-            print(f"{i}. `{line}`")
+        print(f"## {head}（{name}{marker}）" if zh else f"## {head} ({name}{marker})")
+        print(f"| {col_say} | {col_do} |")
+        print("|------|------|")
+        for say, do in flow[lang]:
+            print(f"| {say} | {do} |")
         print()
 
-    print("## 看板 (panel-manage.py run <name>)" if zh else "## Panels (panel-manage.py run <name>)")
-    print("| Name | " + ("用途" if zh else "Use") + " |")
+    print("## 按场景" if zh else "## Where do I start?")
+    print("| " + ("想做什么" if zh else "Goal") + " | " + (col_say) + " |")
     print("|------|------|")
-    for key, zh_desc, en_desc in PANELS:
-        print(f"| {key} | {zh_desc if zh else en_desc} |")
+    for label, say in SCENARIOS[lang]:
+        print(f"| {label} | {say} |")
     print()
 
-    print("## 按场景导航" if zh else "## Where do I start?")
-    print("| " + ("场景" if zh else "Goal") + " | " + ("命令" if zh else "Command") + " |")
-    print("|------|------|")
-    for label, cmd in SCENARIOS[lang]:
-        print(f"| {label} | `{cmd}` |")
-    print()
-
-    print("## 安全约定" if zh else "## Safety rules")
+    print("## 怎么安全" if zh else "## Safety")
     if zh:
-        print("- 写操作默认 dry-run；确认后加 `--apply`")
-        print("- 删除 = 移入 trash（可 restore）；`purge` 需 `--force` 才永久删")
-        print("- 项目/任务元数据只用脚本写，勿手改 `.project` / `.task`")
+        print("- 改动前我先给你看效果,确认后才落盘。")
+        print("- 删除只是移进回收站,可恢复;永久删除我会再问一次。")
+        print("- 这些细节你不用管,直接说意图即可。")
     else:
-        print("- Writes are dry-run by default; add `--apply` to commit")
-        print("- delete = move to trash (restorable); `purge` needs `--force`")
-        print("- Project/task metadata via scripts only; don't hand-edit `.project`/`.task`")
-    print()
-    print((f"脚本目录: `{SK}`" if zh else f"Scripts dir: `{SK}`"))
+        print("- I preview changes first; nothing is written until you confirm.")
+        print("- Delete just moves to trash (restorable); purge asks again.")
+        print("- You don't manage any of this — just state intent.")
     return 0
 
 

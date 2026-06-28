@@ -2,12 +2,22 @@
 """Config panel for plan-manager."""
 
 import argparse
+import importlib.util
 import json
 from pathlib import Path
 
 
 CONFIG_PATH = Path.home() / ".claude" / "plan-manager" / "config.json"
 PANELS_PATH = Path.home() / ".claude" / "plan-manager" / "panels.json"
+
+
+def _load_panel_registry() -> dict:
+    """Reuse panel-manage.py's registry() so fixed/saved counts stay authoritative."""
+    pm_path = Path(__file__).resolve().parent / "panel-manage.py"
+    spec = importlib.util.spec_from_file_location("_pm", pm_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.registry()
 
 
 CORE_MEANING_ZH = {
@@ -68,10 +78,9 @@ def print_github(config: dict) -> None:
 
 
 def print_panel_registry() -> None:
-    panels = read_json(PANELS_PATH)
-    fixed = panels.get("fixed") if isinstance(panels.get("fixed"), dict) else {}
-    saved = panels.get("saved") if isinstance(panels.get("saved"), dict) else {}
-    # fixed panels may be implicit in panel-manage.py even when panels.json missing.
+    reg = _load_panel_registry()
+    fixed = reg.get("fixed") if isinstance(reg.get("fixed"), dict) else {}
+    saved = reg.get("saved") if isinstance(reg.get("saved"), dict) else {}
     print("## Panel Registry")
     print("| Type | Count |")
     print("|------|------:|")

@@ -5,3 +5,4 @@
 .venv/
 *.bak.*
 .project.bak.*
+__pycache__/

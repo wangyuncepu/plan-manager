@@ -4,7 +4,7 @@
 
 ```json
 {
-  "version": "4.3.0",
+  "version": "4.4.0",
   "updated": "ISO-8601 timestamp",
   "mode": "strategist | executor",
   "active_tasks": ["TASK-ID"],

@@ -17,6 +17,6 @@ done
 
 "$PANEL" run config | grep -q 'Core Config'
 "$PANEL" run trash | grep -q 'Type'
-"$PANEL" run help | grep -q '快速流程'
+"$PANEL" run help | grep -q '你可以说'
 
 echo "panel registry ok"

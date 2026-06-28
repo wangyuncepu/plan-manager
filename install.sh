@@ -77,7 +77,7 @@ fi
 "$SKILL_PATH/scripts/verify-installation.sh" --target "$TARGET"
 
 echo ""
-echo "plan-manager v4.3.0 installed."
+echo "plan-manager v4.4.0 installed."
 echo "  Target: $TARGET_KIND"
 echo "  Mode: $MODE"
 echo "  Path: $TARGET"
