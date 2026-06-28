@@ -1,0 +1,16 @@
+id: PLA-009
+title: 插件市场分发冒烟 0.1.0
+project: plan-manager
+status: completed
+priority: P1
+order: 9
+created: 2026-06-29
+deadline: 
+completed: 2026-06-29
+depends_on: []
+depends_on_cross: []
+description: |
+  端到端验证从插件市场/仓库全新安装 plan-manager 0.1.0:install.sh 的 symlink 与 copy 两模式、verify-installation、首次 /plan-manager 不崩、panel registry 完整、config 引导可用。对应核心成功度量「首次不崩=成功」。
+notes: |
+plan_file: plan.md
+max_iterations: 0

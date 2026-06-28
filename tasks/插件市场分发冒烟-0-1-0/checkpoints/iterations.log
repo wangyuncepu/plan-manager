@@ -1,0 +1,10 @@
+[2026-06-29T01:01:45+08:00] PLA-009 distribution smoke 0.1.0
+S1 copy to scratchpad tmp: 25 files OK
+S2 verify-installation on copy: ok OK
+S3 fresh-copy panels help/overview/config/panels: all rc=0 non-empty OK
+S4 no hardcoded source path in copy scripts; __file__-based resolution works (config-panel imports panel-manage on copy) OK
+S5 symlink mode verify + help panel: ok OK
+S6 plugin.json claude+codex: valid JSON, version 0.1.0 OK
+S7 install.sh: --force branch + final verify call present; run on existing = detect+verify+exit, no mutation OK
+S8 temp targets cleaned; real ~/.claude symlink intact -> source OK
+RESULT: all criteria met; first-run-no-crash confirmed on fresh copy + symlink; no code changes needed
