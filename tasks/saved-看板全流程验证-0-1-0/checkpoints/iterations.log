@@ -1,0 +1,11 @@
+[2026-06-29T01:25:09+08:00] PLA-012 saved-panel full-flow verification 0.1.0
+S1 initial saved=[] recorded
+S2 add dry-run: saved unchanged OK
+S3 add --apply: saved=[_pla012_tmp] OK
+S4 list shows | saved | _pla012_tmp OK
+S5 run: rc=0, 46 lines, $ROOT/$LANG expanded (no literal) OK
+S6 add fixed same-name 'overview': REJECTED 'cannot override fixed panel' OK
+S7 generate temp: rc=0, panels.json saved unchanged OK
+S8 remove dry-run keeps, --apply deletes; gone from list OK
+S9 terminal: saved=[] (back to initial), fixed=10, verify-panels ok OK
+RESULT: saved-panel subsystem fully verified; no residue; no code changes needed

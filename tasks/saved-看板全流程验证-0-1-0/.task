@@ -1,0 +1,16 @@
+id: PLA-012
+title: saved 看板全流程验证 0.1.0
+project: plan-manager
+status: completed
+priority: P2
+order: 12
+created: 2026-06-29
+deadline: 
+completed: 2026-06-29
+depends_on: []
+depends_on_cross: []
+description: |
+  端到端验证 saved 看板子系统:panel-manage add(dry-run→--apply)→list 出现→run 正常→remove(dry-run→--apply)→消失;/C.UTF-8/ 变量展开;generate 临时看板;saved 不污染 fixed。全程用临时看板名,验证后清理,不留副作用。
+notes: |
+plan_file: plan.md
+max_iterations: 0
