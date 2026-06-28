@@ -1,5 +1,5 @@
 # Plan: 验证 executor 端到端执行链路
-Task: PLS-001 | Project: PlanSkill
+Task: PLA-001 | Project: PlanSkill
 Plan Status: done | Created: 2026-06-08 | Updated: 2026-06-08
 
 ## Goal

@@ -1,5 +1,5 @@
 # Plan: 验证标准化后 plan-manager 闭环
-Task: PLS-005 | Project: PlanSkill
+Task: PLA-005 | Project: PlanSkill
 Plan Status: done | Created: 2026-06-26 | Updated: 2026-06-26
 
 ## Goal
@@ -19,7 +19,7 @@ Plan Status: done | Created: 2026-06-26 | Updated: 2026-06-26
 
 1. [x] 明确任务范围 → verify: .task 与 plan.md 存在
 2. [x] 对照当前实现验证状态 → verify: 相关文件存在且命令可运行
-3. [x] 更新任务状态 → verify: .task status=completed, plan.md Plan Status=done, STATE.json active_tasks excludes PLS-005
+3. [x] 更新任务状态 → verify: .task status=completed, plan.md Plan Status=done, STATE.json active_tasks excludes PLA-005
 
 ## Risks & Mitigations
 

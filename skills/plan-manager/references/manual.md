@@ -2,6 +2,16 @@
 
 plan-manager is a panel-centered project orchestration skill. It manages projects, tasks, plans, execution state, GitHub remotes, and trash through scripts.
 
+## How you use it (interaction model)
+
+You drive plan-manager **by conversation**. Just tell the assistant what you want in plain language — "show overview", "add a task to X", "run the next task". The assistant runs all the scripts for you behind the scenes; you never have to type a CLI command or learn flags like `--apply`.
+
+- Say intent, not commands. Guidance below lists commands for reference/automation, but you can always just describe what you want.
+- The assistant previews any change in plain words and asks before applying. Deletes go to trash (restorable); permanent removal is double-confirmed.
+- When the assistant invokes a panel (e.g. `/plan-manager help`), it runs the script and shows the rendered result inline.
+
+(The CLI sections in this manual document the scripts the assistant uses; they are not steps you must run yourself.)
+
 ## Start here
 
 Unsure what to do? Open the help panel — it adapts to the current role and lists the quick flow + every command:
@@ -263,7 +273,7 @@ Read a task:
 ```bash
 ~/.claude/skills/plan-manager/scripts/task-manage.py read \
   --root /home/wangyu/ClaudeCodeCLI \
-  PLS-001
+  PLA-001
 ```
 
 Create a task, dry-run first:
@@ -292,7 +302,7 @@ Change status and priority:
 ```bash
 ~/.claude/skills/plan-manager/scripts/task-manage.py update \
   --root /home/wangyu/ClaudeCodeCLI \
-  PLS-001 \
+  PLA-001 \
   --status ready \
   --priority P0 \
   --apply
@@ -303,7 +313,7 @@ Start a task:
 ```bash
 ~/.claude/skills/plan-manager/scripts/task-manage.py start \
   --root /home/wangyu/ClaudeCodeCLI \
-  PLS-001 \
+  PLA-001 \
   --apply
 ```
 
@@ -312,7 +322,7 @@ Complete a task:
 ```bash
 ~/.claude/skills/plan-manager/scripts/task-manage.py complete \
   --root /home/wangyu/ClaudeCodeCLI \
-  PLS-001 \
+  PLA-001 \
   --apply
 ```
 
@@ -321,8 +331,8 @@ Manage dependencies:
 ```bash
 ~/.claude/skills/plan-manager/scripts/task-manage.py deps \
   --root /home/wangyu/ClaudeCodeCLI \
-  PLS-002 \
-  --add PLS-001 \
+  PLA-002 \
+  --add PLA-001 \
   --apply
 ```
 
@@ -331,7 +341,7 @@ Delete a task to trash:
 ```bash
 ~/.claude/skills/plan-manager/scripts/task-manage.py delete \
   --root /home/wangyu/ClaudeCodeCLI \
-  PLS-001 \
+  PLA-001 \
   --force \
   --apply
 ```

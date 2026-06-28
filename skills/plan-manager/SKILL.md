@@ -1,7 +1,7 @@
 ---
 name: plan-manager
 preamble-tier: 3
-version: 4.4.0
+version: 0.1.0
 description: |
   Dual-role autonomous project orchestration system.
   strategist — analyze projects, review plans, discuss goals and direction.
@@ -302,7 +302,7 @@ project/CDMSystem/
 **STATE.json schema:**
 ```json
 {
-  "version": "4.4.0",
+  "version": "0.1.0",
   "updated": "ISO-8601 timestamp",
   "mode": "strategist | executor",
   "active_tasks": ["TASK-ID"],

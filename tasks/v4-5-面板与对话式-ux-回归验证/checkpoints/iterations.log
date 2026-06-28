@@ -1,0 +1,9 @@
+[2026-06-29T00:17:58+08:00] PLA-006 regression run
+step1 panels: 10/10 run, rc=0 (ready-queue empty = valid, PLA-006 in_progress)
+step2 config count: 10 == list 10 OK
+step3 help: conversational, no --apply/placeholder leak OK
+step4 forced-routing spot-check help/overview/trash: script-first OK (this session)
+step5 verify-panels + verify-installation: both ok
+step6 version 0.1.0 across SKILL/2 plugins/STATE schema/install; zero stale OK
+step7 docs: references no stale 4.x, manual interaction-model present OK
+RESULT: all success criteria met

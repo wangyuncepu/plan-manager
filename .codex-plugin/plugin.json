@@ -1,6 +1,6 @@
 {
   "name": "plan-manager",
-  "version": "4.4.0",
+  "version": "0.1.0",
   "description": "Autonomous multi-project orchestration system. User sets goals and reviews plans; AI handles drafting, execution, and routine decisions.",
   "author": {
     "name": "wangyuncepu",

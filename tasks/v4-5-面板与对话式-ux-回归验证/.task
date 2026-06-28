@@ -1,0 +1,16 @@
+id: PLA-006
+title: V4.5 面板与对话式 UX 回归验证
+project: plan-manager
+status: completed
+priority: P1
+order: 1
+created: 2026-06-29
+deadline: 
+completed: 2026-06-29
+depends_on: []
+depends_on_cross: []
+description: |
+  逐一回归验证 10 个固定面板(help/config/overview/projects/tasks/ready-queue/remote/github-status/trash/panels)与对话式触发链路；验证 INTERACTION MODEL（AI 跑脚本、不暴露 CLI）、FORCED PANEL ROUTING、富文本 reprint、config 面板计数；同步 manual/references。把本轮临时修复固化为可重复验证。
+notes: |
+plan_file: plan.md
+max_iterations: 0

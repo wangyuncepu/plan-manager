@@ -1,5 +1,5 @@
 # Plan: 标准化 plan-manager skill 结构与脚本入口
-Task: PLS-003 | Project: PlanSkill
+Task: PLA-003 | Project: PlanSkill
 Plan Status: done | Created: 2026-06-26 | Updated: 2026-06-26
 
 ## Goal

@@ -1,4 +1,4 @@
-id: PLS-002
+id: PLA-002
 title: 修复 executor 文件隔离与 checkpoint 问题
 project: PlanSkill
 status: completed
@@ -7,10 +7,10 @@ order: 2
 created: 2026-06-08
 deadline:
 completed: 2026-06-08
-depends_on: [PLS-001]
+depends_on: [PLA-001]
 depends_on_cross: []
 description: |
-  基于 PLS-001 发现的问题清单，修复 SKILL.md 中 executor 模式的关键缺陷。
+  基于 PLA-001 发现的问题清单，修复 SKILL.md 中 executor 模式的关键缺陷。
 
   修复范围（来源于 checkpoints/issues.md）：
   1. HIGH: 文件隔离与 plan steps 冲突 — 加例外规则：plan 显式列出的跨目录操作在执行该 step 时允许
@@ -20,7 +20,7 @@ description: |
   5. MEDIUM: crash recovery fallback — 无 checkpoint 时回退到 plan.md 第一个未完成 step
   6. LOW: STATE.json 更新频率 — 在 Module 4 execution loop step 4 后加更新说明
 notes: |
-  PlanSkill P0 任务。依赖 PLS-001 完成。
+  PlanSkill P0 任务。依赖 PLA-001 完成。
   修复的是 SKILL.md 中的行为定义，不是创建新文件。
   关联: project/PlanSkill/tasks/validate-executor-core-loop/checkpoints/issues.md
 plan_file: plan.md

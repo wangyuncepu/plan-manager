@@ -1,10 +1,10 @@
 # Plan: 修复 executor 文件隔离与 checkpoint 问题
-Task: PLS-002 | Project: PlanSkill
+Task: PLA-002 | Project: PlanSkill
 Plan Status: done | Created: 2026-06-08 | Updated: 2026-06-08
 
 ## Goal
 
-修复 PLS-001 发现的 6 个 executor 模式行为定义缺陷，全部在 SKILL.md 内修改，不创建新文件。
+修复 PLA-001 发现的 6 个 executor 模式行为定义缺陷，全部在 SKILL.md 内修改，不创建新文件。
 
 ## Success Criteria (COMPLETION PROMISE)
 

@@ -1,5 +1,5 @@
 # Plan: 增强 /plan-manager dashboard 与任务面板
-Task: PLS-004 | Project: PlanSkill
+Task: PLA-004 | Project: PlanSkill
 Plan Status: done | Created: 2026-06-26 | Updated: 2026-06-26
 
 ## Goal
