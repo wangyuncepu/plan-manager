@@ -1,0 +1,9 @@
+[2026-06-29T01:06:40+08:00] PLA-010 README productization 0.1.0
+S2 top: value prop 'Talk to your projects' + 5 selling points OK
+S3 'How you use it': 4 conversational examples, no CLI-to-user OK
+S4 dual-role table + Panels (fixed/saved/temp) sections added OK
+S5 install sections preserved: 6 ### sections (Claude/Codex/Copilot x plugin+manual) OK
+S6 consistency: no 4.x/3.x, no PLS-/PlanSkill; fixed broken header-less Modules table (added ## Modules + header row) OK
+S7 doc links: manual/panels-integration/architecture/state/installation all exist OK
+write-exception: README.md only
+RESULT: all criteria met; README is now a product landing page aligned with 0.1.0

@@ -1,0 +1,16 @@
+id: PLA-010
+title: README 产品化重写 0.1.0
+project: plan-manager
+status: completed
+priority: P1
+order: 10
+created: 2026-06-29
+deadline: 
+completed: 2026-06-29
+depends_on: []
+depends_on_cross: []
+description: |
+  把 README 从开发者内部视角重写为面向插件市场的产品落地页：清晰价值主张、对话式用法(用户说意图/AI跑脚本)、dual-role(strategist/executor)、面板中心、典型示例。保留并复用现有安装章节。与 0.1.0 实际行为一致。
+notes: |
+plan_file: plan.md
+max_iterations: 0
