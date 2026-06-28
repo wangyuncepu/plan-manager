@@ -1,0 +1,16 @@
+id: PLA-011
+title: executor 真实执行压测 0.1.0
+project: plan-manager
+status: completed
+priority: P1
+order: 11
+created: 2026-06-29
+deadline: 
+completed: 2026-06-29
+depends_on: []
+depends_on_cross: []
+description: |
+  用一个真有产出的多步任务压测 executor 核心机制：在本任务目录内 TDD 式构建一个自包含小模块+测试，逐步执行并标记、写 iterations.log、中途写 checkpoint snapshot 并模拟崩溃恢复(从首个未勾选步续跑)、记录 velocity。验证 Ralph 循环、checkpoint、crash recovery 在真实任务上工作。所有写入限本任务目录。
+notes: |
+plan_file: plan.md
+max_iterations: 0

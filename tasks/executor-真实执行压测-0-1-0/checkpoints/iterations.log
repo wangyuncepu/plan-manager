@@ -1,0 +1,9 @@
+[2026-06-29T01:19:49+08:00] step1 RED: wrote test_calc.py; run=FAIL(no calc) velocity=progressing
+[2026-06-29T01:19:49+08:00] step2 GREEN: wrote calc.add; add=PASS divide=FAIL velocity=progressing
+[2026-06-29T01:20:02+08:00] step2b: added divide stub so import resolves; add=PASS divide=FAIL(NotImplemented) velocity=progressing
+[2026-06-29T01:20:12+08:00] step3: wrote checkpoints/snapshot.md (steps 1-3 done) velocity=progressing
+[2026-06-29T01:20:22+08:00] step4 RECOVERY: parsed snapshot -> resume at 'step 4'; implemented divide(+zero guard); divide tests=PASS velocity=progressing
+[2026-06-29T01:20:35+08:00] step5 IMPROVE: added type hints+docstrings; full suite=PASS(3) velocity=progressing
+[2026-06-29T01:20:46+08:00] step6: wrote artifact/README.md
+[2026-06-29T01:20:46+08:00] step7: isolation check via git status
+[2026-06-29T01:21:16+08:00] DONE: all 7 steps; final suite PASS(3); recovery verified at step4; isolation ok; velocity progressing throughout
