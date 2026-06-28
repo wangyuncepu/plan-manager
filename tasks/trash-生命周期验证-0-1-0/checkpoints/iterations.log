@@ -1,0 +1,12 @@
+[2026-06-29T01:28:24+08:00] PLA-013 trash lifecycle verification 0.1.0
+S1 temp project _pla013_proj created
+S2 project delete dry-run: not moved OK
+S3 delete --force --apply: moved to .plan-manager/trash/projects/ OK
+S4 trash list + show: listed with details OK
+S5 restore dry-run no-op; --apply restored + readable OK
+S6 safe_child guard: '../evil' and 'a/b' rejected rc=1, no traversal OK
+S7 purge gating: without --force REJECTED; --force --apply permanent OK
+S8 task-level: delete->tasks/.trash, listed, restore --apply OK
+S9 cleanup: delete+purge all _pla013 targets OK
+S10 terminal: no _pla013 residue in project/ or trash; real projects intact (6) OK
+RESULT: trash subsystem fully verified (soft-delete/restore/purge + --force + safe_child + dry-run); no residue; no code changes needed

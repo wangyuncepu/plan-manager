@@ -1,0 +1,11 @@
+[2026-06-29T01:34:15+08:00] PLA-014 overnight-mode verification 0.1.0
+S1 overnight flag: false->true, config panel showed overnight=true OK
+S2 temp _pla014_proj + 2 ready tasks (approved 1-step plans) OK
+S3 unattended run: PLA-001+PLA-002 both completed, 0 user prompts OK
+S4 doubling: config max_iterations 30 -> overnight effective 60 OK
+S5 OVERNIGHT-REPORT.md generated with Completed/Paused/Cost sections OK
+S6 safety contract present (SKILL:636 'prompt would be required, checkpoint and skip/stop') OK
+S7 cleanup: _pla014_proj delete+purge; overnight restored=false; no residue OK
+S8 real projects intact (6); removed test OVERNIGHT-REPORT.md to avoid root pollution
+write-exception used: <root>/OVERNIGHT-REPORT.md (overnight's documented output), then cleaned
+RESULT: overnight contract verified; no residue; no code changes needed

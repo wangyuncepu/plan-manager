@@ -1,0 +1,16 @@
+id: PLA-014
+title: overnight 模式验证 0.1.0
+project: plan-manager
+status: completed
+priority: P2
+order: 14
+created: 2026-06-29
+deadline: 
+completed: 2026-06-29
+depends_on: []
+depends_on_cross: []
+description: |
+  验证 overnight 模式契约:overnight 标志开关、max_iterations 加倍、无用户提示连续执行、需提示时 checkpoint+停、结束生成 <root>/OVERNIGHT-REPORT.md(完成/暂停/成本)。用一次性临时项目+若干小就绪任务做受控无人值守跑,验证后清理、复原 overnight=false。
+notes: |
+plan_file: plan.md
+max_iterations: 0

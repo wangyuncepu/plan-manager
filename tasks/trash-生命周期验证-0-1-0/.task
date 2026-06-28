@@ -1,0 +1,16 @@
+id: PLA-013
+title: trash 生命周期验证 0.1.0
+project: plan-manager
+status: completed
+priority: P2
+order: 13
+created: 2026-06-29
+deadline: 
+completed: 2026-06-29
+depends_on: []
+depends_on_cross: []
+description: |
+  端到端验证 trash 子系统:项目与任务的 delete→list→show→restore→purge 全链;dry-run 默认、--apply 落地、purge/empty 需 --force;safe_child 路径护栏(防越界删除);软删除可恢复、purge 永久。全程用专用临时项目/任务,验后清理,不动真实数据。
+notes: |
+plan_file: plan.md
+max_iterations: 0
