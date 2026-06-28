@@ -1,0 +1,14 @@
+[2026-06-29T00:57:27+08:00] PLA-008 en output regression 0.1.0
+S1 lang zh->en recorded OK
+S2 10 panels en: all rc=0 non-empty OK
+S3 CJK scan: found 2 bugs -> github-status header (远程仓库) + panels descriptions hardcoded zh
+  fix1 github-manage.sh cmd_status: pass --lang from config to github-verify.py
+  fix2 panel-manage.py: add description_en to 10 fixed panels; cmd_list picks by language
+  fix3 panel-manage.py registry(): DEFAULT_REGISTRY fixed now wins over stale panels.json shadow
+S3 re-scan: panels + github-status en clean OK
+S4 en help: 'Say' present, no CJK, no --apply OK
+S5 en CRUD dry-run: English OK
+S6 language restored to zh OK
+S7 verify-panels + verify-installation + py_compile + bash -n: all green OK
+write-exception (en regression scope): edited scripts/github-manage.sh, scripts/panel-manage.py
+RESULT: all criteria met; 3 i18n bugs fixed

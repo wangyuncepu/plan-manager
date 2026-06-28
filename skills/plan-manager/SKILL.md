@@ -152,7 +152,8 @@ its output here. If output is exactly `session: none`, omit this entire section.
 | "list tasks" / "task status" | Quick task status |
 | "complete TASK-ID" / "start TASK-ID" | Manual task state change |
 | "create project" / "add task" | Allowed (safe: only non-running projects) |
-| "make plan" / "review plans" | Read-only plan review (edits only to non-executing tasks) |
+| "make plan" | **BLOCKED** — drafting a new plan is strategist-only. Reply: "Switch to strategist to draft plans." |
+| "review plans" | Read-only plan quality check (no drafting, no edits to executing tasks) |
 | "analyze <project>" | Read-only analysis (no structural changes) |
 
 **In executor mode, the AI actively works.** It doesn't just report — it executes.
@@ -236,7 +237,8 @@ project/CDMSystem/
 | Read any file | Yes | Yes |
 | Write/edit within own task dir | N/A | Yes |
 | Write .project | Yes (goal, desc, notes) | Never |
-| Write new plan.md / .task | Yes | Only for non-executing tasks |
+| Draft new `plan.md` | Yes (strategist owns planning) | **Never** — drafting plans is strategist-only; switch to strategist |
+| Edit `.task` (create/status of non-executing tasks) | Yes | Yes, non-executing tasks only |
 | Write other project files | Never | Never unless an approved `write-exception` lists exact paths |
 | Write STATE.json | No, except role-switch checkpoint metadata | Yes (Module 4) |
 
@@ -838,7 +840,7 @@ Prefer `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> --lang <zh
 ## 执行中 (1/2)
 | 项目 | 任务 | 步骤 | 迭代 | 速度 |
 |------|------|------|------|------|
-| PlanSkill | PS-001 | 3/5 | 4 | progressing |
+| plan-manager | PLA-007 | 3/5 | 4 | progressing |
 
 ## 就绪队列
 | # | 项目 | 任务 | 优先级 |
@@ -846,7 +848,7 @@ Prefer `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> --lang <zh
 | 1 | ExophMetry | EX-001 | P1 |
 
 ## 需要关注
-- PlanSkill/PS-003 — 计划待审查
+- plan-manager/PLA-003 — 计划待审查
 ```
 
 ---
@@ -870,6 +872,7 @@ Prefer `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> --lang <zh
 
 | Script | Purpose |
 |--------|---------|
+| `${CLAUDE_SKILL_DIR}/scripts/_common.py` | Shared library (not run directly): die/slugify/validate_name/read_data/atomic_write/maybe_apply etc., imported by the CRUD/panel scripts |
 | `${CLAUDE_SKILL_DIR}/scripts/help-panel.py [--lang zh\|en]` | Role-aware help panel: quick flows + command index + scenario nav |
 | `${CLAUDE_SKILL_DIR}/scripts/config-panel.py [--lang zh\|en]` | Show full plan-manager configuration panel |
 | `${CLAUDE_SKILL_DIR}/scripts/configure-plan-manager.sh [--root PATH] [--language zh\|en] [--role strategist\|executor] [--show]` | Configure plan-manager and write config.json; `--show` displays config panel |

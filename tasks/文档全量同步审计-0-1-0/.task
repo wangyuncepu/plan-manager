@@ -1,0 +1,16 @@
+id: PLA-007
+title: 文档全量同步审计 0.1.0
+project: plan-manager
+status: completed
+priority: P1
+order: 7
+created: 2026-06-29
+deadline: 
+completed: 2026-06-29
+depends_on: []
+depends_on_cross: []
+description: |
+  逐篇核对 references/(manual、architecture、panels-integration、installation、state-and-checkpoints)+ SKILL.md 与 0.1.0 实际行为一致：INTERACTION MODEL（对话式、AI 跑脚本）、FORCED PANEL ROUTING、10 个固定面板清单、PLA 命名、版本号、目录树/脚本表。修正所有过时处。
+notes: |
+plan_file: plan.md
+max_iterations: 0

@@ -29,60 +29,70 @@ DEFAULT_REGISTRY = {
             "script": "help-panel.py",
             "args": ["--lang", "$LANG"],
             "description": "命令索引 + 引导流程",
+            "description_en": "Command index + guided flows",
         },
         "config": {
             "title": "Config Panel",
             "script": "config-panel.py",
             "args": ["--lang", "$LANG"],
             "description": "plan-manager 配置看板",
+            "description_en": "plan-manager configuration panel",
         },
         "overview": {
             "title": "Project Overview",
             "script": "project-overview.py",
             "args": ["--root", "$ROOT", "--lang", "$LANG"],
             "description": "全局项目总览",
+            "description_en": "Global project overview",
         },
         "projects": {
             "title": "Project CRUD List",
             "script": "project-manage.py",
             "args": ["list", "--root", "$ROOT"],
             "description": "项目 CRUD 列表（轻量，不含 session/remote/建议）",
+            "description_en": "Lightweight project CRUD list (no session/remote/suggestions)",
         },
         "tasks": {
             "title": "Task List",
             "script": "task-manage.py",
             "args": ["list", "--root", "$ROOT"],
             "description": "全部任务列表",
+            "description_en": "All-tasks list",
         },
         "github-status": {
             "title": "GitHub Manage Status",
             "script": "github-manage.sh",
             "args": ["status", "--root", "$ROOT", "--owner", "$GITHUB_OWNER"],
             "description": "GitHub 管理入口的远程状态",
+            "description_en": "Remote status via the GitHub manage entrypoint",
         },
         "ready-queue": {
             "title": "Ready Queue",
             "script": "ready-queue.py",
             "args": ["--root", "$ROOT"],
             "description": "可执行任务队列",
+            "description_en": "Executable ready-task queue",
         },
         "remote": {
             "title": "GitHub Remote Panel",
             "script": "github-verify.py",
             "args": ["--root", "$ROOT", "--owner", "$GITHUB_OWNER", "--lang", "$LANG"],
             "description": "GitHub remote 状态",
+            "description_en": "GitHub remote status",
         },
         "trash": {
             "title": "Trash Panel",
             "script": "trash-manage.py",
             "args": ["list", "--root", "$ROOT"],
             "description": "软删除项目/任务",
+            "description_en": "Soft-deleted projects/tasks",
         },
         "panels": {
             "title": "Panel Manager",
             "script": "panel-manage.py",
             "args": ["list"],
             "description": "看板管理看板",
+            "description_en": "Panel management panel",
         },
     },
     "saved": {},
@@ -110,7 +120,9 @@ def config() -> dict:
 
 def registry() -> dict:
     data = read_json(PANELS_PATH, DEFAULT_REGISTRY)
-    fixed = DEFAULT_REGISTRY["fixed"] | data.get("fixed", {})
+    # Fixed panels are code-owned: DEFAULT_REGISTRY is authoritative and must win,
+    # so a stale panels.json copy can never shadow built-in definitions.
+    fixed = data.get("fixed", {}) | DEFAULT_REGISTRY["fixed"]
     saved = data.get("saved", {}) if isinstance(data.get("saved", {}), dict) else {}
     return {"version": data.get("version", "1.0.0"), "fixed": fixed, "saved": saved}
 
@@ -161,13 +173,16 @@ def validate_panel(panel: dict) -> None:
 
 def cmd_list(_args) -> None:
     data = registry()
+    lang = config().get("language", "zh")
     print("# Panel Manager")
     print()
     print("| Type | Name | Title | Script | Description |")
     print("|------|------|-------|--------|-------------|")
     for kind in ("fixed", "saved"):
         for name, panel in sorted(data[kind].items()):
-            print(f"| {kind} | {name} | {panel.get('title', '')} | {panel.get('script', '')} | {panel.get('description', '')} |")
+            desc = panel.get("description_en") if lang == "en" else None
+            desc = desc or panel.get("description", "")
+            print(f"| {kind} | {name} | {panel.get('title', '')} | {panel.get('script', '')} | {desc} |")
 
 
 def cmd_show(args) -> None:

@@ -1,5 +1,5 @@
 # Plan: 验证标准化后 plan-manager 闭环
-Task: PLA-005 | Project: PlanSkill
+Task: PLA-005 | Project: plan-manager
 Plan Status: done | Created: 2026-06-26 | Updated: 2026-06-26
 
 ## Goal

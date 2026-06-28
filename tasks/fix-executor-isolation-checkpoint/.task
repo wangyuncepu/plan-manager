@@ -1,6 +1,6 @@
 id: PLA-002
 title: 修复 executor 文件隔离与 checkpoint 问题
-project: PlanSkill
+project: plan-manager
 status: completed
 priority: P0
 order: 2
@@ -20,8 +20,8 @@ description: |
   5. MEDIUM: crash recovery fallback — 无 checkpoint 时回退到 plan.md 第一个未完成 step
   6. LOW: STATE.json 更新频率 — 在 Module 4 execution loop step 4 后加更新说明
 notes: |
-  PlanSkill P0 任务。依赖 PLA-001 完成。
+  plan-manager P0 任务。依赖 PLA-001 完成。
   修复的是 SKILL.md 中的行为定义，不是创建新文件。
-  关联: project/PlanSkill/tasks/validate-executor-core-loop/checkpoints/issues.md
+  关联: project/plan-manager/tasks/validate-executor-core-loop/checkpoints/issues.md
 plan_file: plan.md
 max_iterations: 5

@@ -1,10 +1,10 @@
 # Plan: 标准化 plan-manager skill 结构与脚本入口
-Task: PLA-003 | Project: PlanSkill
+Task: PLA-003 | Project: plan-manager
 Plan Status: done | Created: 2026-06-26 | Updated: 2026-06-26
 
 ## Goal
 
-记录标准化 skill 结构与 scripts 入口改造，让 PlanSkill 任务系统反映近期已完成的产品化工作。
+记录标准化 skill 结构与 scripts 入口改造，让 plan-manager 任务系统反映近期已完成的产品化工作。
 
 ## Success Criteria (COMPLETION PROMISE)
 

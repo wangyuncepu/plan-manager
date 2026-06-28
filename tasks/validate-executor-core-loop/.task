@@ -1,6 +1,6 @@
 id: PLA-001
 title: 验证 executor 端到端执行链路
-project: PlanSkill
+project: plan-manager
 status: completed
 priority: P0
 order: 1
@@ -30,7 +30,7 @@ description: |
   - [x] STATE.json 状态转换正确
   - [x] 问题清单已记录
 notes: |
-  PlanSkill P0 任务。Core Loop First 方向的第一步。
+  plan-manager P0 任务。Core Loop First 方向的第一步。
   这是 plan-manager 首次用 executor 模式执行真实任务——吃自己的狗粮。
   设计文档: ~/.gstack/projects/wangyuncepu-plan-manager/wangyu-main-design-20260608-103101.md
 plan_file: plan.md

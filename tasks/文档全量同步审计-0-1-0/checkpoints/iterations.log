@@ -1,0 +1,9 @@
+[2026-06-29T00:31:06+08:00] PLA-007 doc-sync audit 0.1.0
+S1 versions: only 0.1.0, no 3.x/4.x OK
+S2 prefix: PLS- only in own plan text; fixed stale PlanSkill->plan-manager + PS-/PlanSkill SKILL example OK
+S3 panel list: SKILL == manual == panel-manage list == 10 OK
+S4 scripts table: added _common.py row; 16 files all represented OK
+S5 references: no dead wrappers (update-docmap.sh exists; install.sh at repo root); no stale version/PLS/PlanSkill OK
+S6 verify-panels + verify-installation + py_compile: all green OK
+write-exception (doc audit scope): edited skills/plan-manager/SKILL.md + 6 legacy tasks/*/{.task,plan.md} (PlanSkill->plan-manager)
+RESULT: all criteria met

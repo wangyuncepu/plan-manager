@@ -1,6 +1,6 @@
 id: PLA-005
 title: 验证标准化后 plan-manager 闭环
-project: PlanSkill
+project: plan-manager
 status: completed
 priority: P0
 order: 5

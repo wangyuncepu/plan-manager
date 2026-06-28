@@ -1,0 +1,16 @@
+id: PLA-008
+title: 英文 en 输出回归 0.1.0
+project: plan-manager
+status: completed
+priority: P2
+order: 8
+created: 2026-06-29
+deadline: 
+completed: 2026-06-29
+depends_on: []
+depends_on_cross: []
+description: |
+  在 config language=en 下回归全部面向用户的输出：10 个固定面板 + help/CRUD/config，验证英文文案完整、无中文残留、无报错；面向开发者受众确保英文体验可用。
+notes: |
+plan_file: plan.md
+max_iterations: 0

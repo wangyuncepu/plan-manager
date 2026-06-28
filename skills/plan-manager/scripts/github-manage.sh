@@ -92,10 +92,12 @@ cmd_status() {
   require_owner
   local verify="$SKILL_DIR/github-verify.py"
   [ -x "$verify" ] || die "github-verify.py not found"
+  local lang
+  lang="$(config_value language)"; [ -n "$lang" ] || lang="zh"
   if [ -n "$PROJECT" ]; then
-    "$verify" --root "$ROOT" --owner "$OWNER" --project "$PROJECT"
+    "$verify" --root "$ROOT" --owner "$OWNER" --project "$PROJECT" --lang "$lang"
   else
-    "$verify" --root "$ROOT" --owner "$OWNER"
+    "$verify" --root "$ROOT" --owner "$OWNER" --lang "$lang"
   fi
 }
 

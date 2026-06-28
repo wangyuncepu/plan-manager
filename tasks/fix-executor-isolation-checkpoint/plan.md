@@ -1,5 +1,5 @@
 # Plan: 修复 executor 文件隔离与 checkpoint 问题
-Task: PLA-002 | Project: PlanSkill
+Task: PLA-002 | Project: plan-manager
 Plan Status: done | Created: 2026-06-08 | Updated: 2026-06-08
 
 ## Goal
