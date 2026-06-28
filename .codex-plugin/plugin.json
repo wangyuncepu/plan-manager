@@ -1,0 +1,42 @@
+{
+  "name": "plan-manager",
+  "version": "4.2.0",
+  "description": "Autonomous multi-project orchestration system. User sets goals and reviews plans; AI handles drafting, execution, and routine decisions.",
+  "author": {
+    "name": "wangyuncepu",
+    "url": "https://github.com/wangyuncepu"
+  },
+  "homepage": "https://github.com/wangyuncepu/plan-manager",
+  "repository": "https://github.com/wangyuncepu/plan-manager",
+  "license": "MIT",
+  "keywords": [
+    "project-management",
+    "task-tracking",
+    "planning",
+    "execution",
+    "autonomous",
+    "orchestration"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Plan Manager",
+    "shortDescription": "Multi-project task planning and execution workflow",
+    "longDescription": "Plan Manager provides a 6-module workflow for project registry, task CRUD, execution plans, parallel execution, loop checks, and assistant guidance.",
+    "developerName": "wangyuncepu",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Configure plan manager",
+      "Add a task to my project",
+      "Execute two projects"
+    ],
+    "websiteURL": "https://github.com/wangyuncepu/plan-manager",
+    "privacyPolicyURL": "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement",
+    "termsOfServiceURL": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service",
+    "screenshots": []
+  }
+}

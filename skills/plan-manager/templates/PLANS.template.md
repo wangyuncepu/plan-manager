@@ -1,6 +1,6 @@
 # Plan Registry
 
-> Last updated: <%= date %>
+> Last updated: {{DATE}}
 
 ## Summary
 | Status | Count |

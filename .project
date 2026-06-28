@@ -1,20 +1,12 @@
-name: PlanSkill
-slug: planskill
+name: plan-manager
+slug: plan-manager
 status: active
 priority: P0
 created: 2026-06-08
 goal: |
-  打穿 executor 核心执行链路，确保"零交互自动执行"在真实场景下首次运行不崩。
-  通过开发者反馈驱动迭代，将 plan-manager 打磨为 Claude Code 生态中最可靠的项目编排 skill。
+  将 plan-manager 打磨成 Claude Code 生态中可靠的多项目编排 skill：标准化 skill 结构，脚本化可重复流程，验证 strategist/executor 闭环，让 AI 能低交互地管理计划并稳定执行已批准任务。
 description: |
-  plan-manager v4.2.0 — Claude Code 多项目编排 skill。
-  6 模块 + dual-role（strategist/executor）系统。
-  通过 Claude Code 插件市场分发（wangyuncepu/plan-manager）。
-
-  当前方向（Core Loop First）：
-  - 聚焦 executor 模式端到端验证
-  - 确保"创建项目→加任务→制定计划→执行→完成"完整链路可工作
-  - 先跑通再找人试，先收反馈再加功能
+  plan-manager v4.3.0 — Claude Code 多项目编排 skill。面板中心（fixed/saved/temp panels）+ dual-role（strategist/executor）。脚本化 CRUD、trash、GitHub remote、config 看板，共享 _common.py。通过 Claude Code 插件市场分发（wangyuncepu/plan-manager）。
 notes: |
   目标通过 office-hours（Builder mode 五问）+ autoplan（CEO/DX 审查）两阶段澄清，2026-06-08。
   Git 历史: v3.0.0 → v4.0.0 → v4.1.0 → v4.2.0

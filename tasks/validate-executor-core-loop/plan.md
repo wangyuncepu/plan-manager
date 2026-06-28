@@ -8,10 +8,10 @@ Plan Status: done | Created: 2026-06-08 | Updated: 2026-06-08
 
 ## Success Criteria (COMPLETION PROMISE)
 
-- [ ] 用 executor 模式完成一条完整链路：创建测试项目→加任务→制定计划→切换 executor→执行→标记完成
-- [ ] iterations.log 有 ≥1 条迭代记录，格式正确
-- [ ] STATE.json 在任务执行期间正确反映状态变化
-- [ ] 问题清单已输出到 checkpoints/，列出所有 skill 指令模糊/断裂点
+- [x] 用 executor 模式完成一条完整链路：创建测试项目→加任务→制定计划→切换 executor→执行→标记完成
+- [x] iterations.log 有 ≥1 条迭代记录，格式正确
+- [x] STATE.json 在任务执行期间正确反映状态变化
+- [x] 问题清单已输出到 checkpoints/，列出所有 skill 指令模糊/断裂点
 
 ## Approach
 

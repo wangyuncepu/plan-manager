@@ -1,6 +1,6 @@
 # Document Directory
 
-> Auto-generated: <%= datetime %>. Rebuild: "update doc index"
+> Auto-generated: {{DATETIME}}. Rebuild: "update doc index"
 
 ## Summary
 

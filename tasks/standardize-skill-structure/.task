@@ -1,0 +1,16 @@
+id: PLS-003
+title: 标准化 plan-manager skill 结构与脚本入口
+project: PlanSkill
+status: completed
+priority: P0
+order: 3
+created: 2026-06-26
+deadline:
+completed: 2026-06-26
+depends_on: []
+depends_on_cross: []
+description: |
+  将 plan-manager 整理为标准 skill 结构：SKILL.md + scripts/ + templates/ + references/。删除 bin 兼容入口，统一所有调用到 scripts。增强 install.sh，支持 claude/codex/copilot target。增加 configure、validate、project-overview、ready-queue、verify 等确定性脚本。
+notes: |
+plan_file: plan.md
+max_iterations: 10

@@ -8,12 +8,12 @@ Plan Status: done | Created: 2026-06-08 | Updated: 2026-06-08
 
 ## Success Criteria (COMPLETION PROMISE)
 
-- [ ] 文件隔离规则增加 plan-step 例外说明
-- [ ] checkpoint 最小格式已定义在 Module 5 中
-- [ ] STATE.json vs .task 更新时机已明确
-- [ ] auto-continue 行为按 parallelism 区分
-- [ ] crash recovery 有 checkpoint 缺失时的 fallback 逻辑
-- [ ] Module 4 execution loop 包含 STATE.json 更新步骤
+- [x] 文件隔离规则增加 plan-step 例外说明
+- [x] checkpoint 最小格式已定义在 Module 5 中
+- [x] STATE.json vs .task 更新时机已明确
+- [x] auto-continue 行为按 parallelism 区分
+- [x] crash recovery 有 checkpoint 缺失时的 fallback 逻辑
+- [x] Module 4 execution loop 包含 STATE.json 更新步骤
 
 ## Approach
 

@@ -2,12 +2,11 @@ id: PLS-002
 title: 修复 executor 文件隔离与 checkpoint 问题
 project: PlanSkill
 status: completed
-completed: 2026-06-08
 priority: P0
 order: 2
 created: 2026-06-08
 deadline:
-completed:
+completed: 2026-06-08
 depends_on: [PLS-001]
 depends_on_cross: []
 description: |
@@ -24,5 +23,5 @@ notes: |
   PlanSkill P0 任务。依赖 PLS-001 完成。
   修复的是 SKILL.md 中的行为定义，不是创建新文件。
   关联: project/PlanSkill/tasks/validate-executor-core-loop/checkpoints/issues.md
-plan_file:
+plan_file: plan.md
 max_iterations: 5

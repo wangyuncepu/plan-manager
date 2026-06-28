@@ -1,0 +1,17 @@
+id: PLS-005
+title: 验证标准化后 plan-manager 闭环
+project: PlanSkill
+status: completed
+priority: P0
+order: 5
+created: 2026-06-26
+deadline:
+completed: 2026-06-26
+depends_on: []
+depends_on_cross: []
+description: |
+  用标准化后的 scripts/ 结构重新跑通关键路径：/plan-manager 全局 overview；/plan-manager <task> 任务面板；create project；add task；make plan；ready-queue；executor 执行 approved task；checkpoint / STATE.json 恢复路径。
+notes: |
+  完成验证：overview、project panel、task panel、ready queue、script syntax、checkpoint/STATE 更新路径。
+plan_file: plan.md
+max_iterations: 10

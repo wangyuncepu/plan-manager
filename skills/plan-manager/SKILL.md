@@ -1,6 +1,7 @@
 ---
 name: plan-manager
-version: 4.2.0
+preamble-tier: 3
+version: 4.3.0
 description: |
   Dual-role autonomous project orchestration system.
   strategist — analyze projects, review plans, discuss goals and direction.
@@ -59,6 +60,10 @@ allowed-tools:
   - Glob
   - Grep
   - AskUserQuestion
+interactive: true
+benefits-from:
+  - office-hours
+  - autoplan
 ---
 
 # /plan-manager - Dual-Role Autonomous Project Orchestration
@@ -113,6 +118,10 @@ plan-manager has two roles. Switch anytime with "switch to strategist" or "switc
 |------|------|------------|---------------------|--------|
 | T-001 | ✓ | ✓ | ✗ | Criteria vague: "works correctly" |
 
+## Recent Session Activity
+<Run `${CLAUDE_SKILL_DIR}/scripts/session-digest.py <project> --lang <zh|en>` and inline
+its output here. If output is exactly `session: none`, omit this entire section.>
+
 ## Future Direction
 <proposed next steps, improvements, new features>
 
@@ -151,11 +160,23 @@ plan-manager has two roles. Switch anytime with "switch to strategist" or "switc
 ### Role switching
 
 ```
-switch to strategist    → role: strategist. Save to config.
-switch to executor      → role: executor. Save to config.
+switch to strategist    → checkpoint active work, set role: strategist, save to config.
+switch to executor      → check orphaned work, set role: executor, save to config.
 ```
 
-If active executor tasks exist when switching to strategist: warn, checkpoint all tasks, pause them.
+**Switch to strategist protocol:**
+1. Check `STATE.json` and `.task` files for active `in_progress` tasks.
+2. If none: update `~/.claude/plan-manager/config.json` role to `strategist`.
+3. If active tasks exist: warn "Pausing execution for strategy review".
+4. For each active task: write `checkpoints/snapshot.md`, update `STATE.json` with `velocity: paused`, `last_action: role-switch-checkpoint`, and checkpoint path.
+5. Keep `.task` status as `in_progress` so crash recovery can resume; do not mark completed/blocked unless execution truly failed.
+6. Update config role to `strategist` and report all checkpointed tasks.
+
+**Switch to executor protocol:**
+1. Read `STATE.json`; detect orphaned `in_progress` tasks or task states with missing checkpoints.
+2. If orphaned tasks exist: offer resume from checkpoint, pause for user review, or cancel stale execution state.
+3. Do not start new work until orphan handling is resolved.
+4. Update config role to `executor` and report ready queue.
 
 ### Role comparison
 
@@ -216,10 +237,10 @@ project/CDMSystem/
 | Write/edit within own task dir | N/A | Yes |
 | Write .project | Yes (goal, desc, notes) | Never |
 | Write new plan.md / .task | Yes | Only for non-executing tasks |
-| Write other project files | Never | Only when plan step explicitly lists it |
-| Write STATE.json | No | Yes (Module 4) |
+| Write other project files | Never | Never unless an approved `write-exception` lists exact paths |
+| Write STATE.json | No, except role-switch checkpoint metadata | Yes (Module 4) |
 
-> **Plan-step exception:** When a plan step explicitly requires creating or modifying files outside the task directory (e.g., "create a test project under project/"), the executor MAY write to those locations ONLY for that step. All other file isolation rules remain in force.
+> **Guarded plan-step exception:** When a plan step explicitly requires creating or modifying files outside the task directory, the approved `plan.md` step MUST include `write-exception: <exact path or narrow path pattern>`. The executor may write only those listed paths for that step, must log the exception in `checkpoints/iterations.log`, and must verify the path after execution. If the exception touches `.project`, another task directory, configuration files, credentials, external services, or destructive operations, pause and ask the user before writing.
 
 ---
 
@@ -248,7 +269,13 @@ project/CDMSystem/
   "max_iterations_per_task": 30,
   "overnight": false,
   "language": "zh",
-  "role": "strategist"
+  "role": "strategist",
+  "github": {
+    "enabled": false,
+    "owner": "",
+    "repo_match": "project-name",
+    "check_remote": true
+  }
 }
 ```
 
@@ -261,12 +288,38 @@ project/CDMSystem/
 | `max_iterations_per_task` | 30 | Hard cap per task. Task pauses when hit. |
 | `overnight` | false | Enable overnight mode: extended caps, no user prompts ever |
 | `language` | `zh` | Output language: `zh` (Chinese) or `en` (English) |
+| `github.enabled` | false | Show read-only GitHub remote panel/columns |
+| `github.owner` | "" | Default GitHub user/org whose repos map to projects by name |
+| `github.repo_match` | `project-name` | Repo mapping strategy (currently project directory name) |
+| `github.check_remote` | true | Use `gh repo view` to verify expected repo existence |
 
 **Core rules:**
 - One task `in_progress` per project at a time
 - Every task MUST have an approved `plan.md` before execution
 - AI auto-continues: complete -> pick next -> execute, without asking
-- File isolation: running task writes ONLY within its own directory
+- File isolation: running task writes ONLY within its own directory unless approved `write-exception` applies
+
+**STATE.json schema:**
+```json
+{
+  "version": "4.3.0",
+  "updated": "ISO-8601 timestamp",
+  "mode": "strategist | executor",
+  "active_tasks": ["TASK-ID"],
+  "task_states": {
+    "TASK-ID": {
+      "project": "project-name",
+      "task_dir": "<root>/project/<project>/tasks/<task-slug>",
+      "current_step": 1,
+      "iterations": 0,
+      "velocity": "progressing | slow | stalling | stalled | paused",
+      "last_action": "human-readable summary",
+      "checkpoint": "checkpoints/snapshot.md"
+    }
+  }
+}
+```
+Executor owns writes to `STATE.json`. Strategist reads it, except during role-switch checkpointing where it may record paused/checkpointed metadata before changing role.
 
 **Task lifecycle:**
 ```
@@ -277,6 +330,18 @@ cancelled  (no plan) blocked   blocked
 
 ---
 
+## Panel-first principle (read before any operation)
+
+plan-manager is panel-centric. Dashboards are **panels** generated by scripts. Prefer running a named fixed/saved panel via `panel-manage.py run <name>` over ad-hoc script calls when a stable panel exists. All metadata writes go through CRUD scripts (dry-run by default, `--apply` to commit). Deletes are soft (move to trash); permanent removal is `trash-manage.py purge`. Full panel system: see "Module 6 → Panel Management" and `references/panels-integration.md`.
+
+Module map:
+- Module 1 — Project (registry, lifecycle) — defined under "Phase 0 → Project operations"
+- Module 2 — Task (priority/dependency ordering)
+- Module 3 — Plan (AI drafts, user approves)
+- Module 4 — Execute (Ralph loop, executor only)
+- Module 5 — Check (velocity, crash recovery)
+- Module 6 — Assistant (dashboards, panels, routing)
+
 ## Phase 0: Configuration
 
 ### On every invocation
@@ -286,18 +351,18 @@ cancelled  (no plan) blocked   blocked
    - `strategist`: no execution. Focus on analysis, planning, review.
    - `executor`: ready to execute. Check for orphaned tasks (crash recovery).
 3. If missing: configure.
+4. If invoked as bare `/plan-manager` with no specific operation (single source of truth for routing is "Module 6 → Invocation routing"):
+   - If current working directory is inside `<root>/project/<project>`, show that project panel via `panel-manage.py run` equivalent: `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> --lang <zh|en> <project>`.
+   - Otherwise show global overview: `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py run overview`.
 
 ### Configure ("configure plan manager", "setup plan manager")
 
-1. Ask user for root path.
-2. Ask user for language: `zh` (Chinese) or `en` (English). Default `zh`.
-3. Ask user for default role: `strategist` or `executor`. Default `strategist`.
-4. Create structure. Write config with defaults:
+Run:
 ```bash
-cat > ~/.claude/plan-manager/config.json << EOF
-{"root":"$ROOT","role":"$ROLE","parallelism":2,"autonomy":"full","max_iterations_per_task":30,"overnight":false,"language":"$LANG"}
-EOF
+${CLAUDE_SKILL_DIR}/scripts/configure-plan-manager.sh --root <root> --language <zh|en> --role <strategist|executor> [--github-enabled true|false] [--github-owner OWNER] [--github-check-remote true|false]
 ```
+
+If any argument is missing, ask the user first. The script validates the root, creates required directories, and writes `~/.claude/plan-manager/config.json` atomically. Review config any time with `configure-plan-manager.sh --show` or `panel-manage.py run config`.
 
 ### Language behavior
 
@@ -310,9 +375,15 @@ EOF
 
 Update individual config keys. Examples: "switch to executor", "set language to en", "set parallelism to 3", "max iterations 50", "overnight on".
 
----
+### Metadata writes are script-only
 
-## Module 1: PROJECT
+Project/Task metadata writes MUST use scripts. Do not directly Edit `.project` or `.task` except when repairing broken metadata that no script can parse.
+
+- Project CRUD: `${CLAUDE_SKILL_DIR}/scripts/project-manage.py`
+- Task CRUD: `${CLAUDE_SKILL_DIR}/scripts/task-manage.py`
+- Write operations are dry-run by default; pass `--apply` only after the intended diff/action is clear.
+
+
 
 ### .project format
 ```yaml
@@ -326,39 +397,83 @@ description: string
 notes: string
 ```
 
+### Priority assignment
+
+Priority is explicit metadata, not inferred silently.
+
+**Project priority:**
+| Priority | Meaning |
+|----------|---------|
+| P0 | Current strategic focus, shared infrastructure, or blocker for other projects |
+| P1 | Important active project to advance soon |
+| P2 | Useful but not urgent |
+| P3 | Experiment, validation, or low-risk backlog |
+
+**Task priority:**
+| Priority | Meaning |
+|----------|---------|
+| P0 | Blocker, safety issue, core loop work, critical validation, or required for current project goal |
+| P1 | Mainline feature or important improvement |
+| P2 | Cleanup, documentation, quality improvement, non-blocking refactor |
+| P3 | Experiment, low-risk test, optional backlog |
+
+**Defaults and authority:**
+- `create project` defaults to P1 unless user states priority or strategist recommends and user accepts another value.
+- `add task` defaults to P1 unless user states priority or task clearly matches P0/P2/P3 criteria.
+- Strategist may recommend priority changes during review, but must not silently reprioritize existing projects/tasks without user approval.
+- Executor uses priority only for ready-queue ordering; it should not change priority while executing.
+
+
+---
+
+## Module 1: PROJECT
+
 ### List projects ("list projects", "project overview")
 
-Table with project name, status, goal, tasks (active/total), priority.
+Run `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py run overview` (panel-first) and use its table as the baseline. Add strategic interpretation and suggested actions after the script output. For a lightweight metadata-only list use `panel-manage.py run projects`.
 
 ### Create project ("create project <name>")
 
-1. Slugify name.
-2. **Study existing content:** Read the project directory to understand what's already there (README, source files, docs).
-3. **Ask user for the initial goal.** Get a rough goal statement from the user.
-4. **Clarify goal with office-hours:** Invoke the `office-hours` skill (gstack) first. Office-hours uses YC-style forcing questions (demand reality, status quo, narrowest wedge, future-fit) to deeply explore the idea before any planning begins. This surfaces what the project truly needs to be.
-5. **Refine with autoplan:** Invoke the `autoplan` skill (gstack) next. Autoplan runs CEO/design/eng/DX four-perspective review on the office-hours output, systematically locking in the ultimate goal and surfacing blind spots.
-6. Write `.project` with the fully clarified goal (results from steps 4-5).
-7. Report: "Project `<name>` created. Goal: `<clarified goal>`"
+Use project CRUD script only:
+
+```bash
+${CLAUDE_SKILL_DIR}/scripts/project-manage.py create --root <root> --name <name> [--goal TEXT] [--priority P1]
+${CLAUDE_SKILL_DIR}/scripts/project-manage.py create --root <root> --name <name> [--goal TEXT] [--priority P1] --apply
+```
+
+Procedure:
+1. Dry-run `project-manage.py create` and inspect output.
+2. Study existing content if the directory already exists or if user asks to register existing work.
+3. Preload session context with `${CLAUDE_SKILL_DIR}/scripts/session-digest.py <name> --lang <zh|en>` when relevant.
+4. Ask user for the initial goal, then clarify/refine with `office-hours` and `autoplan` if this is a new/unclear project.
+5. Re-run `project-manage.py create ... --apply` only after the goal and priority are clear.
+6. Use `project-manage.py update ... --apply` for later goal/status/priority/description/notes changes.
+
+Validation is owned by `project-manage.py`; do not directly write `.project`.
 
 ### Show project ("show project <name>")
 
-Read `.project`, list tasks with status, show active task details.
+Use `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> --lang <zh|en> <project>`.
 
 ### Analyze project ("analyze <project>", "review <project>") — strategist primary
 
 **Only in strategist mode.** Deep project analysis:
 
 1. Read `.project`, all `.task` files, all `plan.md` files
+1.5. Run `${CLAUDE_SKILL_DIR}/scripts/session-digest.py <project> --lang <zh|en>` to capture recent cc session activity. If output is `session: none`, skip; otherwise hold it for the report.
 2. Map directory structure — what files exist, what's missing
 3. Assess: completed vs pending vs blocked tasks
 4. Review plan quality: goals clear? criteria measurable?
 5. Compare current state against project goal — gaps?
-6. Propose future direction and concrete next actions
-7. Output full analysis report (see Dual-Role System section for format)
+6. Propose future direction and concrete next actions (informed by session activity if available)
+7. Output full analysis report (see Dual-Role System section for format) — include the `## Recent Session Activity` section iff step 1.5 returned non-empty digest
 
 ### Discuss direction ("discuss direction for <project>") — strategist only
 
 Interactive goal-setting and roadmap session:
+0. **Preload session context:** Run `${CLAUDE_SKILL_DIR}/scripts/session-digest.py <project> --lang <zh|en>`.
+   If session exists, review the recent user messages BEFORE asking step 1.
+   Open the discussion with a context-aware line: "我看到你最近在该项目讨论了 `<主题>` (`<相对时间>`)。继续这个方向,还是换个角度?" / "I see you recently discussed `<topic>` here (`<relative_time>`). Continue, or pivot?"
 1. Show current goal. Ask: still accurate? needs update?
 2. Analyze completed work. Ask: what's the most valuable next step?
 3. Propose concrete new tasks. Draft plans for user review.
@@ -394,8 +509,20 @@ max_iterations: number
 Per-project table with status, plan existence, priority.
 
 ### Create task ("add task to <project>", "new task")
-1. List projects if not specified. 2. Ask: title, priority, description, max_iterations (optional).
-3. Auto-assign ID, slug, order. 4. Create `.task`. 5. Report created.
+
+Use task CRUD script only:
+
+```bash
+${CLAUDE_SKILL_DIR}/scripts/task-manage.py create --root <root> --project <project> --title <title> [--priority P1]
+${CLAUDE_SKILL_DIR}/scripts/task-manage.py create --root <root> --project <project> --title <title> [--priority P1] --apply
+```
+
+Procedure:
+1. List/read project if needed to choose target.
+2. Ask for title, priority, description, max_iterations if not provided.
+3. Dry-run `task-manage.py create` and inspect assigned ID/path.
+4. Re-run with `--apply` after validation.
+5. Use `task-manage.py update/start/complete/block/cancel/delete/deps` for all later task metadata changes.
 
 > **Only create tasks on explicit user request** ("add task", "create task", "new task").
 > Do NOT create tasks from analysis suggestions unless user explicitly confirms.
@@ -456,21 +583,32 @@ If in strategist mode: "Cannot execute in strategist mode. Switch to executor fi
 
 Otherwise: compute execution plan, set tasks `in_progress`, update STATE.json, begin executing.
 
+**Ready task definition:**
+A task is ready only when all conditions hold:
+- `.task` status is `ready`
+- `plan.md` exists and `Plan Status` is `approved`
+- all `depends_on` and `depends_on_cross` tasks are completed
+- the project has no other `in_progress` task
+
+**Task selection order:** run `${CLAUDE_SKILL_DIR}/scripts/ready-queue.py --root <root>` to compute deterministic ready queue. It sorts by priority (`P0` → `P3`) → dependency/order field → created date → project name.
+
 **auto-continue behavior:**
 - `execute <N> projects` with N=1 (or "execute", "start"): Complete current task, then STOP. Do not auto-start the next ready task.
-- `execute <N> projects` with N>1 or "auto": Complete current task, then auto-pick next ready task from same or other projects. Continue until N tasks done or no ready tasks remain.
-- "overnight": Same as "auto" but with doubled max_iterations and no user prompts.
+- `execute <N> projects` with N>1: run up to N selected ready tasks, then STOP after those tasks complete or pause.
+- `auto`: after a task completes, pick the next ready task automatically until no ready tasks remain or a MAJOR problem occurs.
+- `overnight`: same as `auto`, with doubled max_iterations and no user prompts; if a prompt would be required, checkpoint and skip/stop according to safety rules.
+- If a task fails or becomes blocked, report it explicitly. Do not silently mark it complete or hide it by continuing.
 
 ### Execution loop
 
 1. Read plan.md → find next unchecked step
-2. Execute step (invoke other skills as needed). All Write/Edit ops target ONLY `<own-task-dir>/` (exception: plan-step explicitly authorizes cross-directory writes)
+2. Execute step (invoke other skills as needed). All Write/Edit ops target ONLY `<own-task-dir>/` unless the approved plan step contains a matching `write-exception`
 3. Check step verification → mark [x] or retry (max 3)
 4. Write iteration log to `<task-dir>/checkpoints/iterations.log`
 5. Update STATE.json: increment `iterations`, set `current_step`, set `last_action`, set `velocity`
 6. Auto-validate: run tests/lint if applicable (PASS→continue, FAIL→fix+retry max 3)
 7. Check progress velocity (Module 5): progressing→continue, stalled→pause
-8. All steps done + all success criteria met → mark task completed in `.task`, update STATE.json, auto-pick next ready task (see auto-continue rules)
+8. All steps done + all success criteria met → run `${CLAUDE_SKILL_DIR}/scripts/task-manage.py complete --root <root> <TASK-ID> --apply`, update STATE.json, auto-pick next ready task (see auto-continue rules)
 9. Iteration count >= max_iterations → pause task, save checkpoint, update `.task` to `blocked`
 
 ### Crash recovery, auto-continue, overnight mode, STATE.json
@@ -546,17 +684,101 @@ After overnight mode ends: summary to `<root>/OVERNIGHT-REPORT.md` (completed, p
 | "overnight report" | N/A | Show latest overnight summary |
 | "iterate <project>" | Propose direction + draft new tasks | Execute next ready task |
 
-### strategist-mode dashboard
+### Invocation routing
+
+| Invocation | Behavior |
+|---|---|
+| `/plan-manager` | Show important config header + project overview using configured root. If current working directory maps to a managed project, prefer that project's panel. |
+| `/plan-manager <PROJECT-NAME|PROJECT-TITLE|PROJECT-SLUG>` | Show important config header + project-specific panel |
+| `/plan-manager <TASK-ID>` | Show important config header + task-specific panel |
+| `/plan-manager <task-title-or-slug>` | Same task panel, matched by task title or task directory slug |
+| `/plan-manager --task <TASK-ID>` | Same task panel, explicit form |
+
+Implementation mapping:
+- Bare `/plan-manager` from inside `<root>/project/<project>`: `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> --lang <zh|en> <project>`
+- Bare `/plan-manager` outside a managed project: `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> --lang <zh|en>`
+- Project panel: `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> --lang <zh|en> <project>`
+- Task panel: `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> --lang <zh|en> <query>` or `--task <query>`
+
+### Panel Management
+
+plan-manager is panel-centric. Prefer running named panels instead of ad-hoc script calls when a stable panel exists.
+
+Panel types:
+- fixed panels: built into `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py` (`config`, `overview`, `projects`, `tasks`, `ready-queue`, `remote`, `github-status`, `trash`, `panels`).
+- saved panels: user-defined, persisted in `~/.claude/plan-manager/panels.json`.
+- temporary panels: one-off generated panels via `panel-manage.py generate`.
+
+Routing:
+| Invocation | Behavior |
+|------------|----------|
+| `/plan-manager config` | Run fixed `config` panel |
+| `/plan-manager overview` | Run fixed `overview` panel |
+| `/plan-manager projects` | Run fixed `projects` panel (metadata-only list) |
+| `/plan-manager tasks` | Run fixed `tasks` panel (all tasks) |
+| `/plan-manager ready-queue` | Run fixed `ready-queue` panel |
+| `/plan-manager remote` | Run fixed `remote` panel |
+| `/plan-manager github-status` | Run fixed `github-status` panel |
+| `/plan-manager trash` | Run fixed `trash` panel |
+| `/plan-manager panels` | Show the panel-management panel (`panel-manage.py list`) |
+| `/plan-manager panel <name>` | Run any fixed or saved panel (`panel-manage.py run <name>`) |
+
+Common commands:
+```bash
+${CLAUDE_SKILL_DIR}/scripts/config-panel.py --lang <zh|en>
+${CLAUDE_SKILL_DIR}/scripts/configure-plan-manager.sh --show
+${CLAUDE_SKILL_DIR}/scripts/panel-manage.py list
+${CLAUDE_SKILL_DIR}/scripts/panel-manage.py run overview
+${CLAUDE_SKILL_DIR}/scripts/panel-manage.py add weekly --script project-overview.py --title "Weekly Overview" --description "每周总览" --args '["--root","$ROOT","--lang","$LANG"]' --apply
+${CLAUDE_SKILL_DIR}/scripts/panel-manage.py remove weekly --apply
+```
+
+
+### Remote panel (GitHub)
+
+If `github.enabled=true` and `github.owner` is set in config, `/plan-manager` MUST show read-only remote status:
+- global overview adds a `Remote Status` column.
+- project panel adds `Expected Repo`, `Origin`, `Remote Status`, `GitHub URL`, `Remote Message`.
+- remote checks are read-only: no `git fetch`, no `git push`, no `git remote set-url`, no repo creation.
+- fixes such as creating a repo or changing origin require explicit user request.
+
+Status meanings:
+| Status | Meaning |
+|--------|---------|
+| `ok` | origin points to expected `<owner>/<project>` and repo exists |
+| `missing_origin` | local git repo has no origin |
+| `not_git` | project directory is not a git repo |
+| `repo_missing` | expected GitHub repo is missing or inaccessible |
+| `origin_mismatch` | origin points to a different repo |
+| `github_unknown` | GitHub check failed, timed out, or gh is not authenticated |
+
+**GitHub management is script-driven.** Do NOT run ad-hoc `git remote`/`gh repo` commands for remote management; use `scripts/github-manage.sh`. Write subcommands are dry-run by default and only mutate with `--apply`:
+| Command | Effect |
+|---------|--------|
+| `github-manage.sh status [--project NAME]` | Read-only remote status (delegates to github-verify.py) |
+| `github-manage.sh list` | List GitHub repos for the owner |
+| `github-manage.sh set-origin <project> [--apply]` | Set origin to `<owner>/<project>` |
+| `github-manage.sh add-origin <project> [--apply]` | Add origin `<owner>/<project>` |
+| `github-manage.sh create-repo <project> [--public] [--apply]` | Create GitHub repo `<owner>/<project>` |
+| `github-manage.sh push <project> [--branch B] [--apply]` | Push current/named branch to origin |
+
+Always show the dry-run output first and get user confirmation before re-running with `--apply`.
+
 
 ```
 # Plan Manager — strategist
 
+## 重要配置
+| Root | Role | Language | Parallelism | Autonomy | Max Iterations | Overnight |
+|------|------|----------|:-----------:|----------|:--------------:|:---------:|
+| /home/wangyu/ClaudeCodeCLI | strategist | zh | 2 | full | 30 | false |
+
 ## 项目分析
-| 项目 | 目标 | 计划质量 | 待分析 | 建议 |
-|------|------|:------:|:----:|------|
-| Xzs_app-dev | 小红书运营软件 | ✓ | 否 | 创建P0任务 |
-| VIP | 未设定 | — | 是 | 注册项目 |
-| ExophMetry | 未设定 | — | 是 | 讨论目标 |
+| 项目 | 目标 | 计划质量 | 待分析 | 最近会话 | 建议 |
+|------|------|:------:|:----:|---------|------|
+| Xzs_app-dev | 小红书运营软件 | ✓ | 否 | 2天前, 17条 | 创建P0任务 |
+| VIP | 未设定 | — | 是 | 无会话 | 注册项目 |
+| ExophMetry | 未设定 | — | 是 | 5天前, 3条 | 讨论目标 |
 
 ## 待审查计划 (1)
 - VIP: 无 .project 文件，需注册
@@ -566,6 +788,11 @@ After overnight mode ends: summary to `<root>/OVERNIGHT-REPORT.md` (completed, p
 2. create project VIP → 注册项目并设定目标
 3. add task to Xzs_app-dev → 创建 V1.2.0 P0 开发任务
 ```
+
+**Populating the "最近会话" / "Last Session" column:**
+Prefer `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> --lang <zh|en>` for the whole dashboard. For one project, run `${CLAUDE_SKILL_DIR}/scripts/session-digest.py <project> --lang <zh|en>`.
+- If first line is `session: none`: show "无会话" / "no session"
+- Otherwise extract `relative_time` and `user_msg_count`, format as `<relative_time>, <count>条` / `<relative_time>, <count> msgs`
 
 ### executor-mode dashboard
 
@@ -598,13 +825,34 @@ After overnight mode ends: summary to `<root>/OVERNIGHT-REPORT.md` (completed, p
 | `<root>/project/<proj>/tasks/<task>/plan.md` | AI-drafted, user-reviewed plan |
 | `<root>/project/<proj>/tasks/<task>/checkpoints/` | Auto-saved state + iterations.log |
 | `<root>/STATE.json` | Global execution state |
+| `<root>/.plan-manager/trash/projects/<name>-<timestamp>` | Trashed projects (restorable until purged) |
+| `<root>/project/<proj>/tasks/.trash/<slug>-<timestamp>` | Trashed tasks (restorable until purged) |
 | `<root>/OVERNIGHT-REPORT.md` | Post-overnight summary |
 | `<root>/DOCMAP.md` | Document index |
 
-## Helper Scripts
+## Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `${CLAUDE_SKILL_DIR}/bin/update-docmap.sh <root>` | Regenerate DOCMAP.md |
-| `${CLAUDE_SKILL_DIR}/bin/init-project.sh <root> <name>` | Create project scaffold |
-| `${CLAUDE_SKILL_DIR}/bin/init-task.sh <root> <project> <title>` | Create task scaffold |
+| `${CLAUDE_SKILL_DIR}/scripts/config-panel.py [--lang zh\|en]` | Show full plan-manager configuration panel |
+| `${CLAUDE_SKILL_DIR}/scripts/configure-plan-manager.sh [--root PATH] [--language zh\|en] [--role strategist\|executor] [--show]` | Configure plan-manager and write config.json; `--show` displays config panel |
+| `${CLAUDE_SKILL_DIR}/scripts/project-manage.py <list\|read\|create\|update\|archive\|delete> --root <root> ... [--apply]` | Project CRUD; write ops dry-run unless `--apply` |
+| `${CLAUDE_SKILL_DIR}/scripts/task-manage.py <list\|read\|create\|update\|start\|complete\|block\|cancel\|delete\|deps> --root <root> ... [--apply]` | Task CRUD/status/deps; write ops dry-run unless `--apply` |
+| `${CLAUDE_SKILL_DIR}/scripts/trash-manage.py <list\|show\|restore\|purge\|empty> --root <root> ... [--apply] [--force]` | Trash management; restore is dry-run unless `--apply`; purge/empty require `--force` |
+| `${CLAUDE_SKILL_DIR}/scripts/update-docmap.sh <root>` | Regenerate DOCMAP.md |
+| `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> [--lang zh\|en] [PROJECT\|TASK] [--task TASK]` | Generate config header plus project overview, project panel, or task-specific panel |
+| `${CLAUDE_SKILL_DIR}/scripts/ready-queue.py --root <root> [--limit N]` | List ready tasks in execution order |
+| `${CLAUDE_SKILL_DIR}/scripts/session-digest.py <project> [--max-user-msgs N] [--lang zh\|en]` | Extract cc session digest. Outputs `session: none` if no session exists. |
+| `${CLAUDE_SKILL_DIR}/scripts/github-verify.py --root <root> --owner <owner> [--project NAME] [--json]` | Read-only GitHub remote verification for projects |
+| `${CLAUDE_SKILL_DIR}/scripts/github-manage.sh <status\|list\|set-origin\|add-origin\|create-repo\|push> [--owner O] [--project NAME] [--apply]` | Script-driven GitHub management; write ops dry-run unless `--apply` |
+| `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py <list\|show\|run\|add\|remove\|generate> ... [--apply]` | Panel registry and panel-management panel; saved panel writes dry-run unless `--apply` |
+| `${CLAUDE_SKILL_DIR}/scripts/verify-panels.sh` | Verify fixed panel registry and panel runner |
+| `${CLAUDE_SKILL_DIR}/scripts/verify-installation.sh [--target PATH]` | Verify standard skill structure and installation health |
+
+## References
+
+- `references/manual.md` — full usage manual (panels, CRUD, GitHub, trash, config)
+- `references/panels-integration.md` — panel registry and panel system
+- `references/architecture.md` — role, directory, and trash-lifecycle architecture
+- `references/state-and-checkpoints.md` — STATE.json and checkpoint format
+- `references/installation.md` — Claude/Codex/Copilot install targets

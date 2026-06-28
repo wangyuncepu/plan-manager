@@ -3,3 +3,5 @@
 *.swo
 *~
 .venv/
+*.bak.*
+.project.bak.*

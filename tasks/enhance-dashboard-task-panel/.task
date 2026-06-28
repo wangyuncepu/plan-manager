@@ -1,0 +1,16 @@
+id: PLS-004
+title: 增强 /plan-manager dashboard 与任务面板
+project: PlanSkill
+status: completed
+priority: P0
+order: 4
+created: 2026-06-26
+deadline:
+completed: 2026-06-26
+depends_on: []
+depends_on_cross: []
+description: |
+  修复 /plan-manager 只显示当前项目的问题；增加重要配置头；支持 /plan-manager <TASK-ID|title|slug> 任务面板；修复多行 goal 显示；恢复下一步建议行动。
+notes: |
+plan_file: plan.md
+max_iterations: 10
