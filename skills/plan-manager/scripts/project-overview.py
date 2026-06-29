@@ -130,34 +130,6 @@ def task_summary(counts: dict, lang: str) -> str:
     return f"{active}/{ready}/{completed}/{total}"
 
 
-def session_cell(script_dir: Path, project: str, root: Path, lang: str) -> str:
-    digest = script_dir / "session-digest.py"
-    if not digest.exists():
-        return "无会话" if lang == "zh" else "no session"
-    try:
-        out = subprocess.run(
-            [str(digest), project, "--root", str(root), "--lang", lang, "--max-user-msgs", "1"],
-            check=False,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            timeout=5,
-        ).stdout.splitlines()
-    except (OSError, subprocess.TimeoutExpired):
-        return "?"
-    if not out or out[0].strip() == "session: none":
-        return "无会话" if lang == "zh" else "no session"
-    rel = "?"
-    count = "0"
-    for line in out:
-        if line.startswith("relative_time:"):
-            rel = line.split(":", 1)[1].strip()
-        elif line.startswith("user_msg_count:"):
-            count = line.split(":", 1)[1].strip()
-    suffix = "条" if lang == "zh" else " msgs"
-    return f"{rel}, {count}{suffix}"
-
-
 def project_summary(project_dir: Path, script_dir: Path, root: Path, lang: str, remote: dict | None = None) -> dict:
     name = project_dir.name
     project_file = project_dir / ".project"
@@ -175,7 +147,6 @@ def project_summary(project_dir: Path, script_dir: Path, root: Path, lang: str, 
         "status": status,
         "goal": goal,
         "tasks": task_summary(counts, lang),
-        "session": session_cell(script_dir, name, root, lang),
         "remote": remote_cell(remote),
         "remote_data": remote or {},
         "suggest": suggest,
@@ -205,11 +176,11 @@ def print_project_overview(root: Path, script_dir: Path, lang: str, remotes: dic
     if has_remote:
         header += " Remote Status |"
         sep += "---------------|"
-    header += " 目标 | 任务(执行/准备/完成/总) | 最近会话 |" if lang == "zh" else " Goal | Tasks(active/ready/done/total) | Last Session |"
+    header += " 目标 | 任务(执行/准备/完成/总) |" if lang == "zh" else " Goal | Tasks(active/ready/done/total) |"
     if lang == "zh":
-        sep += "------|------|---------|"
+        sep += "------|------|"
     else:
-        sep += "------|-------|--------------|"
+        sep += "------|-------|"
     header += " 建议 |" if lang == "zh" else " Suggest |"
     sep += "------|" if lang == "zh" else "---------|"
     print(header)
@@ -221,10 +192,7 @@ def print_project_overview(root: Path, script_dir: Path, lang: str, remotes: dic
         if has_remote:
             cell = "github_unknown" if remote_unknown else summary["remote"]
             row += f" {cell} |"
-        row += (
-            f" {summary['goal']} | {summary['tasks']} | "
-            f"{summary['session']} | {summary['suggest']} |"
-        )
+        row += f" {summary['goal']} | {summary['tasks']} | {summary['suggest']} |"
         print(row)
     return summaries
 
@@ -244,8 +212,8 @@ def suggested_actions(summaries: list[dict], lang: str) -> list[str]:
             actions.append(action)
 
     for summary in summaries:
-        if summary["status"] == "unregistered" and summary["session"] not in {"无会话", "no session", "?"}:
-            action = f"create project {summary['name']} → 基于已有会话注册项目" if lang == "zh" else f"create project {summary['name']} → register from existing session"
+        if summary["status"] == "unregistered":
+            action = f"create project {summary['name']} → 注册未登记的项目目录" if lang == "zh" else f"create project {summary['name']} → register unregistered project dir"
             actions.append(action)
 
     for summary in summaries:
@@ -337,7 +305,6 @@ def print_project_panel(root: Path, script_dir: Path, project_dir: Path, lang: s
         ("Status", summary["status"]),
         ("Goal", summary["goal"]),
         ("Tasks(active/ready/done/total)", summary["tasks"]),
-        ("Last Session", summary["session"]),
         ("Path", str(project_dir)),
     ]:
         print(f"| {key} | {value or '—'} |")

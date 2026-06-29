@@ -49,8 +49,8 @@ DEFAULT_REGISTRY = {
             "title": "Project CRUD List",
             "script": "project-manage.py",
             "args": ["list", "--root", "$ROOT"],
-            "description": "项目 CRUD 列表（轻量，不含 session/remote/建议）",
-            "description_en": "Lightweight project CRUD list (no session/remote/suggestions)",
+            "description": "项目 CRUD 列表（轻量，不含 remote/建议）",
+            "description_en": "Lightweight project CRUD list (no remote/suggestions)",
         },
         "tasks": {
             "title": "Task List",

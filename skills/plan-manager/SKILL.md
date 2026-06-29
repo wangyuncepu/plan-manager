@@ -118,10 +118,6 @@ plan-manager has two roles. Switch anytime with "switch to strategist" or "switc
 |------|------|------------|---------------------|--------|
 | T-001 | ✓ | ✓ | ✗ | Criteria vague: "works correctly" |
 
-## Recent Session Activity
-<Run `${CLAUDE_SKILL_DIR}/scripts/session-digest.py <project> --lang <zh|en>` and inline
-its output here. If output is exactly `session: none`, omit this entire section.>
-
 ## Future Direction
 <proposed next steps, improvements, new features>
 
@@ -481,10 +477,9 @@ ${CLAUDE_SKILL_DIR}/scripts/project-manage.py create --root <root> --name <name>
 Procedure:
 1. Dry-run `project-manage.py create` and inspect output.
 2. Study existing content if the directory already exists or if user asks to register existing work.
-3. Preload session context with `${CLAUDE_SKILL_DIR}/scripts/session-digest.py <name> --lang <zh|en>` when relevant.
-4. Ask user for the initial goal, then clarify/refine with `office-hours` and `autoplan` if this is a new/unclear project.
-5. Re-run `project-manage.py create ... --apply` only after the goal and priority are clear.
-6. Use `project-manage.py update ... --apply` for later goal/status/priority/description/notes changes.
+3. Ask user for the initial goal, then clarify/refine with `office-hours` and `autoplan` if this is a new/unclear project.
+4. Re-run `project-manage.py create ... --apply` only after the goal and priority are clear.
+5. Use `project-manage.py update ... --apply` for later goal/status/priority/description/notes changes.
 
 Validation is owned by `project-manage.py`; do not directly write `.project`.
 
@@ -497,20 +492,16 @@ Use `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> --lang <zh|en
 **Only in strategist mode.** Deep project analysis:
 
 1. Read `.project`, all `.task` files, all `plan.md` files
-1.5. Run `${CLAUDE_SKILL_DIR}/scripts/session-digest.py <project> --lang <zh|en>` to capture recent cc session activity. If output is `session: none`, skip; otherwise hold it for the report.
 2. Map directory structure — what files exist, what's missing
 3. Assess: completed vs pending vs blocked tasks
 4. Review plan quality: goals clear? criteria measurable?
 5. Compare current state against project goal — gaps?
-6. Propose future direction and concrete next actions (informed by session activity if available)
-7. Output full analysis report (see Dual-Role System section for format) — include the `## Recent Session Activity` section iff step 1.5 returned non-empty digest
+6. Propose future direction and concrete next actions
+7. Output full analysis report (see Dual-Role System section for format)
 
 ### Discuss direction ("discuss direction for <project>") — strategist only
 
 Interactive goal-setting and roadmap session:
-0. **Preload session context:** Run `${CLAUDE_SKILL_DIR}/scripts/session-digest.py <project> --lang <zh|en>`.
-   If session exists, review the recent user messages BEFORE asking step 1.
-   Open the discussion with a context-aware line: "我看到你最近在该项目讨论了 `<主题>` (`<相对时间>`)。继续这个方向,还是换个角度?" / "I see you recently discussed `<topic>` here (`<relative_time>`). Continue, or pivot?"
 1. Show current goal. Ask: still accurate? needs update?
 2. Analyze completed work. Ask: what's the most valuable next step?
 3. Propose concrete new tasks. Draft plans for user review.
@@ -812,11 +803,11 @@ Always show the dry-run output first and get user confirmation before re-running
 | /home/wangyu/ClaudeCodeCLI | strategist | zh | 2 | full | 30 | false |
 
 ## 项目分析
-| 项目 | 目标 | 计划质量 | 待分析 | 最近会话 | 建议 |
-|------|------|:------:|:----:|---------|------|
-| Xzs_app-dev | 小红书运营软件 | ✓ | 否 | 2天前, 17条 | 创建P0任务 |
-| VIP | 未设定 | — | 是 | 无会话 | 注册项目 |
-| ExophMetry | 未设定 | — | 是 | 5天前, 3条 | 讨论目标 |
+| 项目 | 目标 | 计划质量 | 待分析 | 建议 |
+|------|------|:------:|:----:|------|
+| Xzs_app-dev | 小红书运营软件 | ✓ | 否 | 创建P0任务 |
+| VIP | 未设定 | — | 是 | 注册项目 |
+| ExophMetry | 未设定 | — | 是 | 讨论目标 |
 
 ## 待审查计划 (1)
 - VIP: 无 .project 文件，需注册
@@ -826,11 +817,6 @@ Always show the dry-run output first and get user confirmation before re-running
 2. create project VIP → 注册项目并设定目标
 3. add task to Xzs_app-dev → 创建 V1.2.0 P0 开发任务
 ```
-
-**Populating the "最近会话" / "Last Session" column:**
-Prefer `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> --lang <zh|en>` for the whole dashboard. For one project, run `${CLAUDE_SKILL_DIR}/scripts/session-digest.py <project> --lang <zh|en>`.
-- If first line is `session: none`: show "无会话" / "no session"
-- Otherwise extract `relative_time` and `user_msg_count`, format as `<relative_time>, <count>条` / `<relative_time>, <count> msgs`
 
 ### executor-mode dashboard
 
@@ -882,7 +868,6 @@ Prefer `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> --lang <zh
 | `${CLAUDE_SKILL_DIR}/scripts/update-docmap.sh <root>` | Regenerate DOCMAP.md |
 | `${CLAUDE_SKILL_DIR}/scripts/project-overview.py --root <root> [--lang zh\|en] [PROJECT\|TASK] [--task TASK]` | Generate config header plus project overview, project panel, or task-specific panel |
 | `${CLAUDE_SKILL_DIR}/scripts/ready-queue.py --root <root> [--limit N]` | List ready tasks in execution order |
-| `${CLAUDE_SKILL_DIR}/scripts/session-digest.py <project> [--max-user-msgs N] [--lang zh\|en]` | Extract cc session digest. Outputs `session: none` if no session exists. |
 | `${CLAUDE_SKILL_DIR}/scripts/github-verify.py --root <root> --owner <owner> [--project NAME] [--json]` | Read-only GitHub remote verification for projects |
 | `${CLAUDE_SKILL_DIR}/scripts/github-manage.sh <status\|list\|set-origin\|add-origin\|create-repo\|push> [--owner O] [--project NAME] [--apply]` | Script-driven GitHub management; write ops dry-run unless `--apply` |
 | `${CLAUDE_SKILL_DIR}/scripts/panel-manage.py <list\|show\|run\|add\|remove\|generate> ... [--apply]` | Panel registry and panel-management panel; saved panel writes dry-run unless `--apply` |

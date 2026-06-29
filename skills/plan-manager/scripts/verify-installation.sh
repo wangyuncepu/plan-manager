@@ -50,7 +50,7 @@ for script in configure-plan-manager.sh update-docmap.sh github-manage.sh verify
   [ -x "$TARGET/scripts/$script" ] || fail "script not executable: scripts/$script"
 done
 
-for script in session-digest.py project-overview.py ready-queue.py project-manage.py task-manage.py trash-manage.py panel-manage.py config-panel.py github-verify.py; do
+for script in project-overview.py ready-queue.py project-manage.py task-manage.py trash-manage.py panel-manage.py config-panel.py github-verify.py; do
   [ -x "$TARGET/scripts/$script" ] || fail "script not executable: scripts/$script"
 done
 
