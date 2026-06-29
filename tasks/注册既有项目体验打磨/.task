@@ -1,0 +1,16 @@
+id: PLA-018
+title: 注册既有项目体验打磨
+project: plan-manager
+status: planned
+priority: P1
+order: 18
+created: 2026-06-29
+deadline: 
+completed: 
+depends_on: []
+depends_on_cross: []
+description: |
+  据 dogfood 反馈(#3/#4/#5):注册已有内容/会话的项目时,自动从素材提议目标让用户确认;已有内容时跳过或询问 README 自动生成;create dry-run 区分'新建空目录'vs'就地注册既有目录'。
+notes: |
+plan_file: plan.md
+max_iterations: 0

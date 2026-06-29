@@ -1,0 +1,16 @@
+id: PLA-016
+title: plan 质量助手 strategist
+project: plan-manager
+status: ready
+priority: P1
+order: 16
+created: 2026-06-29
+deadline: 
+completed: 
+depends_on: []
+depends_on_cross: []
+description: |
+  strategist 自动批判 plan 质量:目标是否对齐项目、success criteria 是否可度量、步骤是否有 verify、是否遗漏 write-exception。给评分+具体问题,辅助 make-plan/review-plans。
+notes: |
+plan_file: plan.md
+max_iterations: 0

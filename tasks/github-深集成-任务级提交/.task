@@ -1,0 +1,16 @@
+id: PLA-017
+title: GitHub 深集成 任务级提交
+project: plan-manager
+status: ready
+priority: P2
+order: 17
+created: 2026-06-29
+deadline: 
+completed: 
+depends_on: []
+depends_on_cross: []
+description: |
+  基于已就绪 github-manage 写操作,做任务级 auto-commit(完成任务→提交其产出)与可选 PR 联动;严守 dry-run/--apply 门控与安全边界。
+notes: |
+plan_file: plan.md
+max_iterations: 0

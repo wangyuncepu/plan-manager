@@ -1,0 +1,10 @@
+[2026-06-29T01:50:30+08:00] PLA-015 dogfood START target=YeBoZhai
+S1 baseline: YeBoZhai git clean; 12 tracked content files (IP档案/素材/公众号)
+S2 register: goal=content-ops (user-confirmed from 2 proposals); .project created in-place
+FRICTION#1: create dry-run on existing-content dir gives no hint that dir already has N files / will register in place (minor, UX)
+FRICTION#2: registering rich existing project — goal was inferable from materials+session; from-scratch ask would waste a turn (mitigated by proposing). Suggests a 'register existing' flow that auto-proposes goal.
+[2026-06-29T01:53:13+08:00] S3 task YEB-001 created in YeBoZhai
+[2026-06-29T01:53:13+08:00] S4 drafted YEB-001 plan + executed -> content-index.md (3 docs, 7 topics)
+[2026-06-29T01:53:13+08:00] S6-7 feedback-report.md: 7 frictions (1 design-level), Top3
+[2026-06-29T01:53:13+08:00] S8 git guard: YeBoZhai existing content zero-modified; new = .project+README+tasks/ (reversible)
+[2026-06-29T01:53:13+08:00] DONE: full real loop on YeBoZhai; key finding = dual-role x file-isolation friction for cross-project mgmt

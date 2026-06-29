@@ -1,0 +1,16 @@
+id: PLA-019
+title: 跨项目管理 角色与隔离设计决策
+project: plan-manager
+status: planned
+priority: P1
+order: 19
+created: 2026-06-29
+deadline: 
+completed: 
+depends_on: []
+depends_on_cross: []
+description: |
+  据 dogfood 反馈(#1/#2):双角色墙×文件隔离墙在'用一个任务管理另一个项目'时冲突。产出设计决策文档:如何授权跨项目/外部项目管理(计划级 project-scope write-exception?strategist+executor 组合连续?工具级护栏?),先定方案再写码。
+notes: |
+plan_file: plan.md
+max_iterations: 0

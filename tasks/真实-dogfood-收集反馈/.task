@@ -1,0 +1,16 @@
+id: PLA-015
+title: 真实 dogfood 收集反馈
+project: plan-manager
+status: completed
+priority: P1
+order: 15
+created: 2026-06-29
+deadline: 
+completed: 2026-06-29
+depends_on: []
+depends_on_cross: []
+description: |
+  用 plan-manager 管一个真实项目(候选 Xzs_app-dev),系统记录交互成本/摩擦点/崩溃,产出反馈报告驱动后续。契合前提:反馈>功能、减少交互、首次不崩。
+notes: |
+plan_file: plan.md
+max_iterations: 0
